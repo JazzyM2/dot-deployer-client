@@ -7,7 +7,7 @@ jobs:
   build:
     docker:
       # specify the version you desire here
-      - image: circleci/node:10.11
+      - image: circleci/golang:1.8
       
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -44,5 +44,5 @@ jobs:
           command: |
             go get github.com/tcnksm/ghr
             VERSION=$(my-binary --version)
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete 3.0.0 ./dist_electron/
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n TEST -b A NEW RELEASE -delete 3.0.0 ./dist_electron/
 
