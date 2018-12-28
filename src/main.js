@@ -22,6 +22,11 @@ new Vue({
   template: '<App/>'
 }).$mount('#app')
 
+import Buefy from 'buefy'
+import 'buefy/dist/buefy.css'
+
+Vue.use(Buefy)
+
 // authorization checker, redirects to login screen if user signs out
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {

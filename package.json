@@ -17,6 +17,7 @@
   "dependencies": {
     "auto-launch": "^5.0.5",
     "axios": "^0.18.0",
+    "buefy": "^0.7.1",
     "bulma": "^0.7.2",
     "child_process": "^1.0.2",
     "decompress-zip": "^0.3.1",
