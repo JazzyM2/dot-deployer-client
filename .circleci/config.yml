@@ -28,6 +28,8 @@ jobs:
 
       # run build!
       - run: yarn electron:build
+      - store_artifacts:
+          path: ./dist_electron/
 
   release:
     docker:
@@ -47,6 +49,13 @@ jobs:
 workflows:
   version: 2
   build-and-release:
+    triggers:
+      - schedule:
+      filters:
+        branches:
+          only:
+            - dev
+            - master
     jobs:
       - build
       - release:
