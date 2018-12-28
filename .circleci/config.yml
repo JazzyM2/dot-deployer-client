@@ -32,7 +32,11 @@ jobs:
   release:
     docker:
       # specify the version you desire here
-      - image: cricleci/github:0.10
+      - image: circleci/golang:1.8
+
+    dependencies:
+      pre:
+        - go get github.com/tcnksm/ghr
 
     steps:
       - attach_workspace:
@@ -40,8 +44,7 @@ jobs:
       - run:
           name: "Publish Installer on GitHub"
           command: |
-            VERSION=$(my-binary --version)
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n TEST -b A NEW RELEASE -delete 3.0.0 ./dist_electron/
+              ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n TEST -b A NEW RELEASE -delete 3.0.0 ./dist_electron/
 
 # workflows:
 #   version: 2
