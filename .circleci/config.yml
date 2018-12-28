@@ -28,23 +28,24 @@ jobs:
 
       # run build!
       - run: yarn electron:build
+
       - store_artifacts:
           path: ./dist_electron/
+      
+      - attach_workspace:
+          at: ./dist_electron
 
   release:
     docker:
       # specify the version you desire here
       - image: circleci/golang:1.8
 
-    dependencies:
-      pre:
-        - go get github.com/tcnksm/ghr
-
     steps:
       - run:
           name: "Publish Installer on GitHub"
           command: |
-              ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -delete "3.0.0" ./dist_electron/
+            go get github.com/tcnksm/ghr
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" "3.0.0" ./dist_electron/
 
 workflows:
   version: 2
@@ -52,5 +53,9 @@ workflows:
     jobs:
       - build
       - release:
+          filters:
+            branches:
+              only:
+                # - master
           requires:
             - build
