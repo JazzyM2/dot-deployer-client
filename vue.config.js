@@ -1,4 +1,3 @@
-// load in environment variables as soon as possible
 const Dotenv = require('dotenv-webpack');
 const path = require('path')
 
