@@ -1,18 +1,9 @@
-# Javascript Node CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-javascript/ for more details
-#
 version: 2
 jobs:
   build:
     docker:
       # specify the version you desire here
       - image: circleci/node:10.11
-      # - image: cricleci/golang:1.8
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/mongo:3.4.4
 
     working_directory: ~/repo
 
@@ -37,6 +28,15 @@ jobs:
 
       # run build!
       - run: yarn electron:build
+
+  build:
+    docker:
+      # specify the version you desire here
+      - image: cricleci/golang:1.8
+
+    working_directory: ~/repo
+
+    steps:
       - attach_workspace:
           at: ./dist_electron
       - run:
@@ -45,4 +45,3 @@ jobs:
             go get github.com/tcnksm/ghr
             VERSION=$(my-binary --version)
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n TEST -b A NEW RELEASE -delete 3.0.0 ./dist_electron/
-
