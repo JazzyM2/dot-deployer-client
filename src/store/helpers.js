@@ -1,15 +1,13 @@
 const _ = require('lodash')
 
 function ownerId(repository) {
-  let owner = repository.owner.login
+  let owner = repository.full_name.split('/')[0]
   let id = repository.id
   return `${owner}/${id}`
 }
 
 function ownerName(repository) {
-  let owner = repository.owner.login
-  let name = repository.name
-  return `${owner}/${name}`
+  return repository.full_name
 }
 
 function flattenObject(object) {

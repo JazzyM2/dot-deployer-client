@@ -6,7 +6,7 @@
 # A Desktop Application for Deploying Tools
 *Dot Deployer uses the GitHub API to make tool deployment easy and painless*
 
-[![CircleCI](https://circleci.com/gh/WeConnect/dot-deployer-app.svg?style=svg&circle-token=142d6fb53b53f0f144aeb0cad1c160dc3d465b17)](https://circleci.com/gh/WeConnect/dot-deployer-app)
+[![CircleCI](https://circleci.com/gh/WeConnect/dot-deployer-client.svg?style=svg&circle-token=6b3b28ced522f82e3b60ce3a4d8dda727efa4576)](https://circleci.com/gh/WeConnect/dot-deployer-app)
 
 # 2.6.0 Release Notes
 ### Improvements to App Man Uninstall
