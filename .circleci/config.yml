@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  one:
     docker:
       # specify the version you desire here
       - image: circleci/node:10.11
@@ -29,7 +29,7 @@ jobs:
       # run build!
       - run: yarn electron:build
 
-  release:
+  two:
     docker:
       # specify the version you desire here
       - image: cricleci/golang:1.8
@@ -45,3 +45,9 @@ jobs:
             go get github.com/tcnksm/ghr
             VERSION=$(my-binary --version)
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n TEST -b A NEW RELEASE -delete 3.0.0 ./dist_electron/
+workflows:
+  version: 2
+  one_and_two:
+    jobs:
+      - one
+      - two
