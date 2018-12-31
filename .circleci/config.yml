@@ -4,7 +4,7 @@ jobs:
     docker:
       # specify the version you desire here
       - image: circleci/node:10.11
-      - image: electronuserland/builder:wine
+      - image: electronuserland/builder:wine-mono
 
     working_directory: ~/repo
 
