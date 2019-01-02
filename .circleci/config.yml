@@ -31,8 +31,8 @@ jobs:
 
       # run build!
       - run:
-        name: "Build Application with Electron Build"
-        command: yarn electron:build
+          name: "Build Application with Electron Build"
+          command: yarn electron:build
 
       - store_artifacts:
           path: ./dist_electron/dot-deployer Setup 3.0.0.exe
