@@ -37,8 +37,8 @@ jobs:
       - store_artifacts:
           path: ./dist_electron/dot-deployer Setup 3.0.0.exe
       
-      # - attach_workspace:
-      #     at: ./dist_electron
+      - persist_to_workspace:
+          root: ./dist_electron
 
   release:
     docker:
@@ -46,6 +46,8 @@ jobs:
       - image: circleci/golang:1.8
 
     steps:
+      - attach_workspace:
+          at: ./dist_electron
       - run:
           name: "Publish Installer on GitHub"
           command: |
