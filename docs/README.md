@@ -1,7 +1,7 @@
 
 # Dot Deployer
 
-![logo](src/assets/login.png)
+![logo](../src/assets/login.png)
 
 # A Desktop Application for Deploying Tools
 *Dot Deployer uses the GitHub API to make tool deployment easy and painless*
