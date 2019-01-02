@@ -39,6 +39,8 @@ jobs:
       
       - persist_to_workspace:
           root: ./dist_electron
+          paths: 
+            - dot-deployer Setup 3.0.0.exe
 
   release:
     docker:
