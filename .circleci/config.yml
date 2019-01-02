@@ -2,16 +2,18 @@ version: 2
 jobs:
   build:
     docker:
-      # specify the version you desire here
+      # use a wine image to successfully build a windows application
+      # circle ci only supports mac and linux environments, so this is necessary
       - image: electronuserland/builder:wine-mono
-      # - image: circleci/node:10.11
 
+    # set working directory
     working_directory: ~/repo
-
+    
+    # specify steps for build job
     steps:
       - checkout
 
-      # Download and cache dependencies
+      # download and cache dependencies
       - restore_cache:
           keys:
           - v1-dependencies-{{ checksum "package.json" }}
@@ -19,37 +21,44 @@ jobs:
           - v1-dependencies-
 
       - run:
+          # install yarn packages
           name: "Install Packages"
           command: yarn install
 
       - save_cache:
+          # cache node modules for faster builds
           paths:
             - node_modules
           key: v1-dependencies-{{ checksum "package.json" }}
         
       # run tests!
 
-      # run build!
       - run:
+          # build electron application
+          # package.json forces this build to be a windows intaller
           name: "Build Application"
           command: yarn electron:build
 
       - store_artifacts:
+          # store installer as an artifact to access via circle ci
           path: ./dist_electron/dot-deployer Setup 3.0.0.exe
       
       - persist_to_workspace:
+          # persist installer to workspace so release job can access
           root: ./dist_electron
           paths: 
             - dot-deployer Setup 3.0.0.exe
 
   release:
     docker:
-      # specify the version you desire here
+      # use docker go image to leverage ghr library
       - image: circleci/golang:1.8
 
     steps:
+        # mount workspace from build job
       - attach_workspace:
           at: ./dist_electron
+
       - run:
           name: "Publish Installer on GitHub"
           command: |
@@ -65,6 +74,6 @@ workflows:
           # filters:
           #   branches:
           #     only:
-          #       # - master
+          #       - master
           requires:
             - build
