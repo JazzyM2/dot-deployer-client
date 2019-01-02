@@ -19,7 +19,7 @@ jobs:
           - v1-dependencies-
 
       - run:
-          name: "Install Packages with Yarn"
+          name: "Install Packages"
           command: yarn install
 
       - save_cache:
@@ -31,7 +31,7 @@ jobs:
 
       # run build!
       - run:
-          name: "Build Application with Electron Build"
+          name: "Build Application"
           command: yarn electron:build
 
       - store_artifacts:
@@ -50,7 +50,7 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" "3.0.0" ./dist_electron/dot-deployer Setup 3.0.0.exe
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" 3.0.0 ./dist_electron/dot-deployer Setup 3.0.0.exe
 
 workflows:
   version: 2
