@@ -2,46 +2,78 @@ version: 2
 jobs:
   build:
     docker:
-      # specify the version you desire here
-      - image: circleci/node:10.11
+      # use a wine image to successfully build a windows application
+      # circle ci only supports mac and linux environments, so this is necessary
+      - image: electronuserland/builder:wine-mono
 
+    # set working directory
     working_directory: ~/repo
-
+    
+    # specify steps for build job
     steps:
       - checkout
 
-      # Download and cache dependencies
+      # download and cache dependencies
       - restore_cache:
           keys:
           - v1-dependencies-{{ checksum "package.json" }}
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
 
-      - run: yarn install
+      - run:
+          # install yarn packages
+          name: "Install Packages"
+          command: yarn install
 
       - save_cache:
+          # cache node modules for faster builds
           paths:
             - node_modules
           key: v1-dependencies-{{ checksum "package.json" }}
         
       # run tests!
 
-      # run build!
-      - run: yarn electron:build
+      - run:
+          # build electron application
+          # package.json forces this build to be a windows intaller
+          name: "Build Application"
+          command: yarn electron:build
+
+      - store_artifacts:
+          # store installer as an artifact to access via circle ci
+          path: ./dist_electron/dot-deployer Setup 3.0.0.exe
+      
+      - persist_to_workspace:
+          # persist installer to workspace so release job can access
+          root: ./dist_electron
+          paths: 
+            - dot-deployer Setup 3.0.0.exe
 
   release:
     docker:
-      # specify the version you desire here
-      - image: cricleci/golang:1.8
-
-    working_directory: ~/repo
+      # use docker go image to leverage ghr library
+      - image: circleci/golang:1.8
 
     steps:
+        # mount workspace from build job
       - attach_workspace:
           at: ./dist_electron
+
       - run:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            VERSION=$(my-binary --version)
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n TEST -b A NEW RELEASE -delete 3.0.0 ./dist_electron/
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" 3.0.0 "./dist_electron/dot-deployer Setup 3.0.0.exe"
+
+workflows:
+  version: 2
+  build-and-release:
+    jobs:
+      - build
+      - release:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - build
