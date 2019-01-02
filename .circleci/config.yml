@@ -4,7 +4,7 @@ jobs:
     docker:
       # specify the version you desire here
       - image: electronuserland/builder:wine-mono
-      - image: circleci/node:10.11
+      # - image: circleci/node:10.11
 
     working_directory: ~/repo
 
@@ -18,7 +18,9 @@ jobs:
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
 
-      - run: yarn install
+      - run:
+          name: "Install Packages with Yarn"
+          command: yarn install
 
       - save_cache:
           paths:
@@ -28,13 +30,15 @@ jobs:
       # run tests!
 
       # run build!
-      - run: yarn electron:build
+      - run:
+        name: "Build Application with Electron Build"
+        command: yarn electron:build
 
       - store_artifacts:
-          path: ./dist_electron/
+          path: ./dist_electron/dot-deployer Setup 3.0.0.exe
       
-      - attach_workspace:
-          at: ./dist_electron
+      # - attach_workspace:
+      #     at: ./dist_electron
 
   release:
     docker:
@@ -46,7 +50,7 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" "3.0.0" ./dist_electron/
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" "3.0.0" ./dist_electron/dot-deployer Setup 3.0.0.exe
 
 workflows:
   version: 2
