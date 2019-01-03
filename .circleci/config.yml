@@ -1,6 +1,8 @@
 version: 2
 jobs:
   build:
+    environment:
+      VERSION: 2.8.0
     docker:
       # use a wine image to successfully build a windows application
       # circle ci only supports mac and linux environments, so this is necessary
@@ -41,13 +43,13 @@ jobs:
 
       - store_artifacts:
           # store installer as an artifact to access via circle ci
-          path: ./dist_electron/dot-deployer Setup 3.0.0.exe
+          path: ./dist_electron/dot-deployer Setup ${VERSION}.exe
       
       - persist_to_workspace:
           # persist installer to workspace so release job can access
           root: ./dist_electron
           paths: 
-            - dot-deployer Setup 3.0.0.exe
+            - dot-deployer Setup ${VERSION}.exe
 
   release:
     docker:
@@ -63,7 +65,7 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft 3.0.0 "./dist_electron/dot-deployer Setup 3.0.0.exe"
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft ${VERSION} "./dist_electron/dot-deployer Setup ${VERSION}.exe"
 
 workflows:
   version: 2
@@ -71,9 +73,9 @@ workflows:
     jobs:
       - build
       - release:
-          filters:
-            branches:
-              only:
-                - master
+          # filters:
+          #   branches:
+          #     only:
+          #       - master
           requires:
             - build
