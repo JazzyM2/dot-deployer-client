@@ -4,6 +4,13 @@
   "author": "WeWork Design Technology",
   "description": "An open-source solution for deploying GitHub releases",
   "private": true,
+  "build": {
+    "productName": "Dot Deployer",
+    "nsis": {
+      "artifactName": "dot-deployer-setup.${ext}",
+      "uninstallDisplayName": "Dot Deployer"
+    }
+  },
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
