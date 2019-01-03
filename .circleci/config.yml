@@ -36,7 +36,9 @@ jobs:
       # get version number from package json
       - run:
           name: "Get Project Version"
-          command: echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
+          command: |
+            echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
+            echo $TAG
             
       - run:
           # build electron application
@@ -46,13 +48,13 @@ jobs:
 
       - store_artifacts:
           # store installer as an artifact to access via circle ci
-          path: ./dist_electron/dot-deployer Setup ${TAG}.exe
+          path: ./dist_electron/dot-deployer Setup $TAG.exe
       
       - persist_to_workspace:
           # persist installer to workspace so release job can access
           root: ./dist_electron
           paths: 
-            - dot-deployer Setup ${TAG}.exe
+            - dot-deployer Setup $TAG.exe
 
   release:
     docker:
@@ -68,7 +70,7 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft ${TAG} "./dist_electron/dot-deployer Setup ${TAG}.exe"
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft ${TAG} "./dist_electron/dot-deployer Setup $TAG.exe"
 
 workflows:
   version: 2
