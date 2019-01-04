@@ -61,6 +61,24 @@ jobs:
     steps:
       - checkout
 
+      # download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "package.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          # install yarn packages
+          name: "Install Packages"
+          command: yarn install
+
+      - save_cache:
+          # cache node modules for faster builds
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
       # mount workspace from build job
       - attach_workspace:
           at: ./dist_electron
@@ -69,7 +87,6 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
-            yarn add -g github-release-cli
             github-release upload --token ${GITHUB_TOKEN} --owner ${CIRCLE_PROJECT_USERNAME} --repo ${CIRCLE_PROJECT_REPONAME} --tag ${TAG} --name "Test Title" --body "Test Body" ./dist_electron/dot-deployer-setup.exe
 
 workflows:
