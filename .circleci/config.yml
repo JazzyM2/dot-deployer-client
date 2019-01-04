@@ -69,8 +69,8 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
-            yarn global add github-release-cli
-            yarn run github-release upload --token ${GITHUB_TOKEN} --owner ${CIRCLE_PROJECT_USERNAME} --repo ${CIRCLE_PROJECT_REPONAME} --tag ${TAG} --name "Test Title" --body "Test Body" ./dist_electron/dot-deployer-setup.exe
+            npm install -g github-release-cli
+            github-release upload --token ${GITHUB_TOKEN} --owner ${CIRCLE_PROJECT_USERNAME} --repo ${CIRCLE_PROJECT_REPONAME} --tag ${TAG} --name "Test Title" --body "Test Body" ./dist_electron/dot-deployer-setup.exe
 
 workflows:
   version: 2
