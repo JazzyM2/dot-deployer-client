@@ -53,7 +53,7 @@ jobs:
     docker:
       # use docker node image to leverage github-release cli
       # and parse package.json for version number
-      - image: circleci/node:6.10
+      - image: circleci/node:11.6
 
     # set working directory
     working_directory: ~/repo
