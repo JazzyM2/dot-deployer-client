@@ -55,7 +55,13 @@ jobs:
       - image: circleci/node:6.10
       - image: circleci/golang:1.8
 
-    steps:      
+    # set working directory
+    working_directory: ~/repo
+
+    steps:
+
+      - checkout
+         
       # mount workspace from build job
       - attach_workspace:
           at: ./dist_electron
