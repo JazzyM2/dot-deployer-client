@@ -63,7 +63,7 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            echo export TAG=$(eval node -p "require\(\'./package.json\'\).version")
+            echo 'export TAG=$(eval node -p "require\(\'./package.json\'\).version")'
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft ${TAG} "./dist_electron/dot-deployer-setup.exe"
 
 workflows:
