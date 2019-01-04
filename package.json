@@ -24,6 +24,7 @@
     "dotenv-webpack": "^1.5.7",
     "firebase": "^5.7.0",
     "fs-extra": "^7.0.1",
+    "github-release-cli": "^0.4.1",
     "googleapis": "^36.0.0",
     "http": "^0.0.0",
     "lodash": "^4.17.11",
