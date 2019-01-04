@@ -60,8 +60,8 @@ jobs:
           name: "Get Project Version"
           command: |
             echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
-            echo ${BASH_ENV}
-            echo ${TAG}
+            echo $BASH_ENV
+            echo $TAG
       
       # mount workspace from build job
       - attach_workspace:
@@ -71,7 +71,7 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft ${TAG} "./dist_electron/dot-deployer-setup.exe"
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft $TAG "./dist_electron/dot-deployer-setup.exe"
 
 workflows:
   version: 2
