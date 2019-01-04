@@ -60,8 +60,7 @@ jobs:
           name: "Get Project Version"
           command: |
             echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
-            echo $BASH_ENV
-            echo $TAG
+            source $BASH_ENV
       
       # mount workspace from build job
       - attach_workspace:
