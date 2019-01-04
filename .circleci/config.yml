@@ -51,15 +51,8 @@ jobs:
 
   release:
     docker:
-      # use docker node image to leverage github-release cli
-      # and parse package.json for version number
-      - image: circleci/node:11.6
-
-    # set working directory
-    working_directory: ~/repo
-
-    steps:
-      - checkout
+      # use docker go image to leverage ghr library
+      - image: circleci/golang:1.8
 
       # mount workspace from build job
       - attach_workspace:
@@ -68,9 +61,8 @@ jobs:
       - run:
           name: "Publish Installer on GitHub"
           command: |
-            echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
-            npm install -g github-release-cli
-            github-release upload --token ${GITHUB_TOKEN} --owner ${CIRCLE_PROJECT_USERNAME} --repo ${CIRCLE_PROJECT_REPONAME} --tag ${TAG} --name "Test Title" --body "Test Body" ./dist_electron/dot-deployer-setup.exe
+            go get github.com/tcnksm/ghr
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft 2.8.0 ./dist_electron/dot-deployer-setup.exe
 
 workflows:
   version: 2
