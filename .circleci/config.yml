@@ -71,7 +71,7 @@ jobs:
           command: |
             echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
             yarn install github-release-cli
-            github-release --token ${GITHUB_TOKEN} --owner ${CIRCLE_PROJECT_USERNAME} --repo ${CIRCLE_PROJECT_REPONAME} --tag ${TAG} --name "Test Title" --body "Test Body" ./dist_electron/dot-deployer-setup.exe
+            github-release upload --token ${GITHUB_TOKEN} --owner ${CIRCLE_PROJECT_USERNAME} --repo ${CIRCLE_PROJECT_REPONAME} --tag ${TAG} --name "Test Title" --body "Test Body" ./dist_electron/dot-deployer-setup.exe
 
       # - run:
       #     name: "Publish Installer on GitHub"
