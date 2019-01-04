@@ -54,14 +54,7 @@ jobs:
       # use docker go image to leverage ghr library
       - image: circleci/golang:1.8
 
-    steps:
-      # get version number from package json for use with ghr tagging
-      - run:
-          name: "Get Project Version"
-          command: |
-            echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
-            source $BASH_ENV
-      
+    steps:      
       # mount workspace from build job
       - attach_workspace:
           at: ./dist_electron
@@ -70,7 +63,8 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft $TAG "./dist_electron/dot-deployer-setup.exe"
+            echo export TAG=$(eval node -p "require\(\'./package.json\'\).version")
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft ${TAG} "./dist_electron/dot-deployer-setup.exe"
 
 workflows:
   version: 2
