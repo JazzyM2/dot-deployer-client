@@ -60,10 +60,6 @@ jobs:
             - dot-deployer-setup.exe
             - version.txt          
   release:
-    environment:
-      TITLE: i just released this
-      BODY: and its sick
-
     docker:
       # use docker go image to leverage ghr library
       - image: circleci/golang:1.8
@@ -75,6 +71,9 @@ jobs:
 
       - run:
           name: "Publish Installer on GitHub"
+          environment:
+            TITLE: "release title"
+            BODY: "release body"
           command: |
             go get github.com/tcnksm/ghr
             echo 'export TAG=$(more ./dist_electron/version.txt)' >> $BASH_ENV
