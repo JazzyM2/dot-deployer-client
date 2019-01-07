@@ -75,7 +75,7 @@ jobs:
             go get github.com/tcnksm/ghr
             echo 'export TAG=$(more ./dist_electron/version.txt)' >> $BASH_ENV
             source $BASH_ENV
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "release title" -b "release body" -soft ${TAG} ./dist_electron/dot-deployer-setup.exe
+            ghr -n "release title" -b "release body" -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -soft ${TAG} ./dist_electron/dot-deployer-setup.exe
 workflows:
   version: 2
   build-and-release:
