@@ -48,7 +48,7 @@ jobs:
           name: "Get Code Version"
           command: |
             node -p -e "require('./package.json').version" > ./dist_electron/version.txt
-            
+
       - store_artifacts:
           # store version file
           path: ./dist_electron/version.txt
@@ -73,8 +73,8 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            more ./dist_electron/version.txt
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft 2.8.0 ./dist_electron/dot-deployer-setup.exe
+            echo export TAG=more ./dist_electron/version.txt
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft ${TAG} ./dist_electron/dot-deployer-setup.exe
 workflows:
   version: 2
   build-and-release:
