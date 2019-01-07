@@ -73,7 +73,8 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            echo export TAG=more ./dist_electron/version.txt
+            echo 'export TAG=$(more ./dist_electron/version.txt)' >> $BASH_ENV
+            source $BASH_ENV
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft ${TAG} ./dist_electron/dot-deployer-setup.exe
 workflows:
   version: 2
