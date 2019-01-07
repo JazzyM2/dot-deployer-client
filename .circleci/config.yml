@@ -49,31 +49,31 @@ jobs:
           paths: 
             - dot-deployer-setup.exe
 
-  version:
-    docker: 
-      - image: circleci/node:latest
+  # version:
+  #   docker: 
+  #     - image: circleci/node:latest
 
-    # set working directory
-    working_directory: ~/repo
+  #   # set working directory
+  #   working_directory: ~/repo
     
-    steps:
-      # checkout code to access package.json
-      - checkout
+  #   steps:
+  #     # checkout code to access package.json
+  #     - checkout
 
-      - run:
-          name: "Set Environment Variables"
-          command: |
-            echo eval node -p "require\(\'./package.json\'\).version" > version.txt
+  #     - run:
+  #         name: "Set Environment Variables"
+  #         command: |
+  #           echo eval node -p "require\(\'./package.json\'\).version" > version.txt
       
-      - store_artifacts:
-          # store version as an artifact to access via circle ci
-          path: ./version.txt
+  #     - store_artifacts:
+  #         # store version as an artifact to access via circle ci
+  #         path: ./version.txt
       
-      - persist_to_workspace:
-          # persist installer to workspace so release job can access
-          root: ./dist_electron
-          paths: 
-            - version.txt
+  #     - persist_to_workspace:
+  #         # persist installer to workspace so release job can access
+  #         root: ./dist_electron
+  #         paths: 
+  #           - version.txt
             
   release:
     docker:
@@ -88,15 +88,14 @@ jobs:
       - run:
           name: "Publish Installer on GitHub"
           command: |
-            more ./dist_electron/version.txt
             go get github.com/tcnksm/ghr
+            jq './package.json | .version'
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft 2.8.0 ./dist_electron/dot-deployer-setup.exe
 workflows:
   version: 2
   build-and-release:
     jobs:
       - build
-      - version
       - release:
           # filters:
           #   branches:
@@ -104,4 +103,3 @@ workflows:
           #       - master
           requires:
             - build
-            - version
