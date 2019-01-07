@@ -53,17 +53,19 @@ jobs:
     docker:
       # use docker go image to leverage ghr library
       - image: circleci/golang:1.8
+      - image: circleci/node:8.11
 
     steps:      
       # mount workspace from build job
       - attach_workspace:
           at: ./dist_electron
 
-      # - run:
-      #     name: "Set Environment Variables"
-      #     command: |
-      #       echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
-     
+      - run:
+          name: "Set Environment Variables"
+          command: |
+            echo export TAG=$(eval node -p "require\(\'./package.json\'\).version") >> $BASH_ENV
+            SET
+            
       - run:
           name: "Publish Installer on GitHub"
           command: |
@@ -75,9 +77,9 @@ workflows:
     jobs:
       - build
       - release:
-          filters:
-            branches:
-              only:
-                - master
+          # filters:
+          #   branches:
+          #     only:
+          #       - master
           requires:
             - build
