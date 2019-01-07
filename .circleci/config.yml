@@ -33,12 +33,6 @@ jobs:
         
       # run tests!
 
-      # get version from package.json
-      - run:
-          name: "Get Code Version"
-          command: |
-            node -p -e "require('./package.json').version" > ./dist_electron/version.txt
-
       - run:
           # build electron application
           # package.json forces this build to be a windows intaller
@@ -49,6 +43,12 @@ jobs:
           # store installer as an artifact to access via circle ci
           path: ./dist_electron/dot-deployer-setup.exe
 
+      # get version from package.json
+      - run:
+          name: "Get Code Version"
+          command: |
+            node -p -e "require('./package.json').version" > ./dist_electron/version.txt
+            
       - store_artifacts:
           # store version file
           path: ./dist_electron/version.txt
