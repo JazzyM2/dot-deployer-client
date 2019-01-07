@@ -32,7 +32,13 @@ jobs:
           key: v1-dependencies-{{ checksum "package.json" }}
         
       # run tests!
-            
+
+      # get version from package.json
+      - run:
+          name: "Get Code Version"
+          command: |
+            node -p -e "require('./package.json').version" > ./dist_electron/version.txt
+
       - run:
           # build electron application
           # package.json forces this build to be a windows intaller
@@ -42,39 +48,17 @@ jobs:
       - store_artifacts:
           # store installer as an artifact to access via circle ci
           path: ./dist_electron/dot-deployer-setup.exe
+
+      - store_artifacts:
+          # store version file
+          path: ./dist_electron/version.txt
       
       - persist_to_workspace:
           # persist installer to workspace so release job can access
           root: ./dist_electron
           paths: 
             - dot-deployer-setup.exe
-
-  version:
-    docker: 
-      - image: circleci/node:latest
-
-    # set working directory
-    working_directory: ~/repo
-    
-    steps:
-      # checkout code to access package.json
-      - checkout
-
-      - run:
-          name: "Set Environment Variables"
-          command: |
-            node -p -e "require('./package.json').version" > version.txt
-      
-      - store_artifacts:
-          # store version as an artifact to access via circle ci
-          path: version.txt
-      
-      - persist_to_workspace:
-          # persist installer to workspace so release job can access
-          root: ./dist_electron
-          paths: 
-            - version.txt
-            
+            - version.txt          
   release:
     docker:
       # use docker go image to leverage ghr library
@@ -89,13 +73,13 @@ jobs:
           name: "Publish Installer on GitHub"
           command: |
             go get github.com/tcnksm/ghr
+            more ./dist_electron/version.txt
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -n "Test Release Title" -b "Test Release Body" -soft 2.8.0 ./dist_electron/dot-deployer-setup.exe
 workflows:
   version: 2
   build-and-release:
     jobs:
       - build
-      - version
       - release:
           # filters:
           #   branches:
@@ -103,4 +87,3 @@ workflows:
           #       - master
           requires:
             - build
-            - version
