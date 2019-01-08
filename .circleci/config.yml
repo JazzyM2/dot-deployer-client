@@ -11,6 +11,8 @@ jobs:
     
     # specify steps for build job
     steps:
+
+      # checkout codebase
       - checkout
 
       # download and cache dependencies
@@ -20,27 +22,27 @@ jobs:
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
 
+      # install yarn packages
       - run:
-          # install yarn packages
           name: "Install Packages"
           command: yarn install
 
+      # cache node modules for faster builds
       - save_cache:
-          # cache node modules for faster builds
           paths:
             - node_modules
           key: v1-dependencies-{{ checksum "package.json" }}
         
       # run tests!
 
+      # build electron application
+      # package.json build script forces a windows build
       - run:
-          # build electron application
-          # package.json forces this build to be a windows intaller
           name: "Build Application"
           command: yarn electron:build
 
+      # store build as an artifact to access via circle ci web interface
       - store_artifacts:
-          # store installer as an artifact to access via circle ci
           path: ./dist_electron/dot-deployer-setup.exe
 
       # get version from package.json
@@ -49,16 +51,17 @@ jobs:
           command: |
             node -p -e "require('./package.json').version" > ./dist_electron/version.txt
 
+      # store version file
       - store_artifacts:
-          # store version file
           path: ./dist_electron/version.txt
       
+      # persist installer to workspace so release job can access
       - persist_to_workspace:
-          # persist installer to workspace so release job can access
           root: ./dist_electron
           paths: 
             - dot-deployer-setup.exe
-            - version.txt          
+            - version.txt
+
   release:
     docker:
       # use docker go image to leverage ghr library
@@ -69,6 +72,7 @@ jobs:
       - attach_workspace:
           at: ./dist_electron
 
+      # publish github release with package.json version and client installer
       - run:
           name: "Publish Installer on GitHub"
           command: |
@@ -76,15 +80,16 @@ jobs:
             echo 'export TAG=$(more ./dist_electron/version.txt)' >> $BASH_ENV
             source $BASH_ENV
             ghr -n "release title" -b "release body" -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -soft ${TAG} ./dist_electron/dot-deployer-setup.exe
+
 workflows:
   version: 2
   build-and-release:
     jobs:
       - build
       - release:
-          # filters:
-          #   branches:
-          #     only:
-          #       - master
+          filters:
+            branches:
+              only:
+                - master
           requires:
             - build
