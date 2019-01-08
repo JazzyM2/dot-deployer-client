@@ -4,6 +4,17 @@ const path = require('path')
 process.env.VUE_APP_VERSION = require('./package.json').version
 
 module.exports = {
+  pluginOptions: {
+    electronBuilder: {
+      builderOptions: {
+        productName: "Dot Deployer",
+        nsis: {
+          artifactName: "dot-deployer-setup.${ext}",
+          uninstallDisplayName: "Dot Deployer"
+        }
+      }
+    }
+  },
   configureWebpack: {
     plugins: [
       new Dotenv({
