@@ -45,6 +45,10 @@ jobs:
       - store_artifacts:
           path: ./dist_electron/dot-deployer-setup.exe
 
+      # store latest.yml as an artifact to access via circle ci web interface
+      - store_artifacts:
+          path: ./dist_electron/latest.yml
+
       # get version from package.json
       - run:
           name: "Get Code Version"
@@ -60,6 +64,7 @@ jobs:
           root: ./dist_electron
           paths: 
             - dot-deployer-setup.exe
+            - latest.yml
             - version.txt
 
   release:
@@ -79,7 +84,7 @@ jobs:
             go get github.com/tcnksm/ghr
             echo 'export TAG=$(more ./dist_electron/version.txt)' >> $BASH_ENV
             source $BASH_ENV
-            ghr -n "testing auto update with toast" -b "building a packaged app for testing" -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -soft ${TAG} ./dist_electron/dot-deployer-setup.exe
+            ghr -n "testing auto update with toast" -b "building a packaged app for testing" -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -soft ${TAG} ./dist_electron
 
 workflows:
   version: 2
