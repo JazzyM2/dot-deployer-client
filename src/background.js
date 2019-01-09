@@ -20,6 +20,7 @@ const {
 } = require("electron-updater")
 
 autoUpdater.on('checking-for-update', () => {
+  console.log('Auto Updater Checking For Update...')
   Toast.open({
     message: "Checking for an update...",
     position: "is-bottom",
@@ -68,6 +69,8 @@ autoUpdater.on('update-downloaded', () => {
     position: "is-bottom",
     type: "is-success"
   });
+  // trigger app to close and update install
+  // autoUpdater.quitAndInstall();
 });
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -181,8 +184,11 @@ app.on('ready', async () => {
     await installVueDevtools()
   }
   createWindow()
-  autoUpdater.checkForUpdatesAndNotify()
 })
+
+app.on('ready', function () {
+  autoUpdater.checkForUpdatesAndNotify();
+});
 
 // Exit cleanly on request from parent process in development mode.
 if (isDevelopment) {
