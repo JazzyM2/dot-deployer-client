@@ -1,6 +1,6 @@
 {
   "name": "dot-deployer",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "author": "WeWork Design Technology",
   "description": "An open-source solution for deploying GitHub releases",
   "private": true,
@@ -22,6 +22,7 @@
     "child_process": "^1.0.2",
     "decompress-zip": "^0.3.1",
     "dotenv-webpack": "^1.5.7",
+    "electron-updater": "^4.0.6",
     "firebase": "^5.7.0",
     "fs-extra": "^7.0.1",
     "googleapis": "^36.0.0",
