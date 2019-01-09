@@ -14,13 +14,6 @@
         >Sign In with Google</button>
       </div>
     </div>
-    <div v-if="message !== null" class="level">
-      <div class="message level-item has-text-centered">
-        <button
-          :class="{'button': true, 'animated': true, 'fadeIn': true, 'is-success': !message.error, 'is-danger': message.error}"
-        >{{ message.message }}</button>
-      </div>
-    </div>
   </section>
 </template>
 
@@ -43,10 +36,9 @@ export default {
   },
   mounted() {
     // this.enableAutoStart();
-    this.flashMessage(process.env.VUE_APP_CLIENTSECRET, false);
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
-        this.flashMessage("signing in...", false);
+        this.flashMessage("signing in...", "is-success");
         this.signIn();
       } else {
         this.authenticating = false;
@@ -144,10 +136,11 @@ export default {
       );
       firebase.auth().signInAndRetrieveDataWithCredential(credential);
     },
-    flashMessage(message, error) {
-      this.$store.dispatch("Deployer/flashMessage", {
+    flashMessage(message, type) {
+      this.$toast.open({
         message: message,
-        error: error
+        position: "is-bottom",
+        type: type
       });
     },
     signIn() {
@@ -181,18 +174,18 @@ export default {
       } catch (err) {
         message = error;
       }
-      this.flashMessage(message, true);
+      this.flashMessage(message, "is-danger");
     },
     handleSignInSuccess() {
       this.uninstallAppManager()
         .then(result => {
           if (result) {
-            this.flashMessage(result, false);
+            this.flashMessage(result, "is-success");
           }
           this.continue();
         })
         .catch(error => {
-          this.flashMessage(error, true);
+          this.flashMessage(error, "is-danger");
           this.continue();
         });
     },
@@ -202,9 +195,6 @@ export default {
     }
   },
   computed: {
-    message() {
-      return this.$store.state.Deployer.message;
-    },
     repositories() {
       return this.$store.state.Deployer.repositories.repositories;
     },

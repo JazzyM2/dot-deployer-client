@@ -5,10 +5,71 @@ import {
   protocol,
   BrowserWindow
 } from 'electron'
+
 import {
   createProtocol,
   installVueDevtools
 } from 'vue-cli-plugin-electron-builder/lib'
+
+import {
+  Toast
+} from 'buefy/dist/components/toast'
+
+const {
+  autoUpdater
+} = require("electron-updater")
+
+autoUpdater.on('checking-for-update', () => {
+  Toast.open({
+    message: "Checking for an update...",
+    position: "is-bottom",
+    type: "is-info"
+  });
+})
+
+autoUpdater.on('update-available', () => {
+  Toast.open({
+    message: "Update Available!",
+    position: "is-bottom",
+    type: "is-success"
+  });
+})
+
+autoUpdater.on('update-not-available', () => {
+  Toast.open({
+    message: "No Update Available",
+    position: "is-bottom",
+    type: "is-info"
+  });
+})
+
+autoUpdater.on('error', (error) => {
+  Toast.open({
+    message: `Error: ${error}`,
+    position: "is-bottom",
+    type: "is-danger"
+  });
+})
+
+autoUpdater.on('download-progress', (progressObj) => {
+  let log_message = "Download speed: " + progressObj.bytesPerSecond;
+  log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+  log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+  Toast.open({
+    message: log_message,
+    position: "is-bottom",
+    type: "is-info"
+  });
+})
+
+autoUpdater.on('update-downloaded', () => {
+  Toast.open({
+    message: "Update Downloaded!",
+    position: "is-bottom",
+    type: "is-success"
+  });
+});
+
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Keep a global reference of the window object, if you don't, the window will
@@ -71,7 +132,6 @@ function createWindow() {
   win = new BrowserWindow({
     width: 835,
     height: 400,
-    icon: '../public/favicon.ico',
     maximizable: false,
     closable: false,
     autoHideMenuBar: true,
@@ -121,6 +181,7 @@ app.on('ready', async () => {
     await installVueDevtools()
   }
   createWindow()
+  autoUpdater.checkForUpdatesAndNotify()
 })
 
 // Exit cleanly on request from parent process in development mode.
@@ -137,12 +198,3 @@ if (isDevelopment) {
     })
   }
 }
-
-// check for updates and update app if necessary
-const {
-  autoUpdater
-} = require("electron-updater")
-
-app.on('ready', function () {
-  autoUpdater.checkForUpdatesAndNotify();
-});
