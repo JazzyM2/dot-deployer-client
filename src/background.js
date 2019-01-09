@@ -137,3 +137,12 @@ if (isDevelopment) {
     })
   }
 }
+
+// check for updates and update app if necessary
+const {
+  autoUpdater
+} = require("electron-updater")
+
+app.on('ready', function () {
+  autoUpdater.checkForUpdatesAndNotify();
+});
