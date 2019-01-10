@@ -1,6 +1,6 @@
 {
   "name": "dot-deployer",
-  "version": "v2.7.2",
+  "version": "v2.7.4",
   "author": "WeWork Design Technology",
   "description": "An open-source solution for deploying GitHub releases",
   "scripts": {
