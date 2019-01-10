@@ -108,5 +108,5 @@ autoUpdater.on('update-downloaded', () => {
     type: "is-success"
   });
   // trigger app to close and update install
-  // autoUpdater.quitAndInstall();
+  autoUpdater.quitAndInstall();
 });

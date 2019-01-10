@@ -126,7 +126,11 @@ app.on('ready', async () => {
     await installVueDevtools()
   }
   createWindow()
-  autoUpdater.checkForUpdates();
+})
+
+// check for updates with electron auto updater
+app.on('ready', () => {
+  autoUpdater.checkForUpdates()
 })
 
 // Exit cleanly on request from parent process in development mode.
