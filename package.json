@@ -3,7 +3,6 @@
   "version": "v2.7.3",
   "author": "WeWork Design Technology",
   "description": "An open-source solution for deploying GitHub releases",
-  "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
