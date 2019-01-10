@@ -38,7 +38,7 @@ export default {
     // this.enableAutoStart();
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
-        this.flashMessage("signing in...", "is-success");
+        this.flashMessage("signing in...", "is-light");
         this.signIn();
       } else {
         this.authenticating = false;

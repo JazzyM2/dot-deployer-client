@@ -10,8 +10,9 @@ module.exports = {
         publish: [{
           provider: "github",
           owner: "WeConnect",
-          repo: "dot-deployer-client",
-          private: true
+          repo: "dot-deployer-client"
+          // private: true,
+          // token: process.env.GH_TOKEN
         }],
         productName: "Dot Deployer",
         nsis: {
