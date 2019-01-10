@@ -13,7 +13,21 @@ import {
 
 const {
   autoUpdater
-} = require("electron-updater")
+} = require("electron-updater");
+
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: 'WeConnect',
+  repo: 'dot-deployer-client'
+  // private: true,
+  // token: process.env.GH_TOKEN
+})
+
+// set custom request headers to support github fetch
+// autoUpdater.requestHeaders = {
+//   Accept: "application/octet-stream",
+//   Authorization: `token ${process.env.GH_TOKEN}`
+// }
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -127,7 +141,68 @@ app.on('ready', async () => {
   }
   createWindow()
   autoUpdater.checkForUpdates();
+  // autoUpdater.checkForUpdatesAndNotify();
 })
+
+// autoUpdater.on("checking-for-update", () => {
+//   this.$toast.open({
+//     message: "Checking for an update...",
+//     position: "is-bottom",
+//     type: "is-info"
+//   });
+// });
+
+// autoUpdater.on("update-available", () => {
+//   this.$toast.open({
+//     message: "Update Available!",
+//     position: "is-bottom",
+//     type: "is-success"
+//   });
+// });
+
+// autoUpdater.on("update-not-available", () => {
+//   this.$toast.open({
+//     message: "No Update Available",
+//     position: "is-bottom",
+//     type: "is-info"
+//   });
+// });
+
+// autoUpdater.on("error", error => {
+//   this.$toast.open({
+//     message: `Error: ${error}`,
+//     position: "is-bottom",
+//     type: "is-danger"
+//   });
+// });
+
+// autoUpdater.on("download-progress", progressObj => {
+//   let log_message = "Download speed: " + progressObj.bytesPerSecond;
+//   log_message =
+//     log_message + " - Downloaded " + progressObj.percent + "%";
+//   log_message =
+//     log_message +
+//     " (" +
+//     progressObj.transferred +
+//     "/" +
+//     progressObj.total +
+//     ")";
+//   this.$toast.open({
+//     message: log_message,
+//     position: "is-bottom",
+//     type: "is-info"
+//   });
+// });
+
+autoUpdater.on("update-downloaded", () => {
+  // this.$toast.open({
+  //   message: "Update Downloaded!",
+  //   position: "is-bottom",
+  //   type: "is-success"
+  // });
+  // trigger app to close and update install
+  autoUpdater.quitAndInstall();
+});
 
 // Exit cleanly on request from parent process in development mode.
 if (isDevelopment) {
