@@ -41,29 +41,18 @@ jobs:
           name: "Build Application"
           command: yarn electron:build
 
-      # store build as an artifact to access via circle ci web interface
-      - store_artifacts:
-          path: ./dist_electron/dot-deployer-setup.exe
-
-      # store latest.yml as an artifact to access via circle ci web interface
-      - store_artifacts:
-          path: ./dist_electron/latest.yml
-
       # get version from package.json
       - run:
           name: "Get Code Version"
           command: |
             node -p -e "require('./package.json').version" > ./dist_electron/version.txt
-
-      # store version file
-      - store_artifacts:
-          path: ./dist_electron/version.txt
       
       # persist installer to workspace so release job can access
       - persist_to_workspace:
           root: ./dist_electron
           paths: 
             - dot-deployer-setup.exe
+            - dot-deployer-setup.exe.blockmap
             - latest.yml
             - version.txt
 
