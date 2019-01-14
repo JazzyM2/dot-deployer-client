@@ -15,13 +15,13 @@ const {
   autoUpdater
 } = require("electron-updater");
 
-autoUpdater.setFeedURL({
-  provider: 'github',
-  owner: 'WeConnect',
-  repo: 'dot-deployer-client'
-  // private: true,
-  // token: process.env.GH_TOKEN
-})
+// autoUpdater.setFeedURL({
+//   provider: 'github',
+//   owner: 'WeConnect',
+//   repo: 'dot-deployer-client'
+//   // private: true,
+//   // token: process.env.GH_TOKEN
+// })
 
 // set custom request headers to support github fetch
 // autoUpdater.requestHeaders = {
@@ -140,8 +140,8 @@ app.on('ready', async () => {
     await installVueDevtools()
   }
   createWindow()
-  autoUpdater.checkForUpdates();
-  // autoUpdater.checkForUpdatesAndNotify();
+  // autoUpdater.checkForUpdates();
+  autoUpdater.checkForUpdatesAndNotify();
 })
 
 // autoUpdater.on("checking-for-update", () => {
@@ -194,15 +194,15 @@ app.on('ready', async () => {
 //   });
 // });
 
-autoUpdater.on("update-downloaded", () => {
-  // this.$toast.open({
-  //   message: "Update Downloaded!",
-  //   position: "is-bottom",
-  //   type: "is-success"
-  // });
-  // trigger app to close and update install
-  autoUpdater.quitAndInstall();
-});
+// autoUpdater.on("update-downloaded", () => {
+//   this.$toast.open({
+//     message: "Update Downloaded!",
+//     position: "is-bottom",
+//     type: "is-success"
+//   });
+//   trigger app to close and update install
+//   autoUpdater.quitAndInstall();
+// });
 
 // Exit cleanly on request from parent process in development mode.
 if (isDevelopment) {
