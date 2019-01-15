@@ -27,11 +27,17 @@ function createActualPath(path) {
       let slash = path.indexOf('\\', dollar)
       let variable = ''
       if (slash === -1) {
-        variable = path.substring(dollar)
+        variable = path.substring(dollar - 1)
       } else {
-        variable = path.substring(dollar, slash)
+        variable = path.substring(dollar - 1, slash)
       }
-      path = path.replace(variable, process.env[variable.substring(1)])
+      console.log("Variable Extracted: ", variable)
+      let environmentVar = variable.substring(1)
+      console.log("Environment Variable String: ", environmentVar)
+      let environment = process.env[environmentVar]
+      console.log("Environment Variable: ", environment)
+      path = path.replace(variable, environment)
+      console.log("Path: ", path)
     } else {
       varsPresent = false
     }

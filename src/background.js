@@ -15,20 +15,6 @@ const {
   autoUpdater
 } = require("electron-updater");
 
-// autoUpdater.setFeedURL({
-//   provider: 'github',
-//   owner: 'WeConnect',
-//   repo: 'dot-deployer-client'
-//   // private: true,
-//   // token: process.env.GH_TOKEN
-// })
-
-// set custom request headers to support github fetch
-// autoUpdater.requestHeaders = {
-//   Accept: "application/octet-stream",
-//   Authorization: `token ${process.env.GH_TOKEN}`
-// }
-
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Keep a global reference of the window object, if you don't, the window will
@@ -47,6 +33,45 @@ const {
 const {
   ipcMain
 } = require('electron')
+
+ipcMain.on('check-for-updates', (event) => {
+  autoUpdater.on("checking-for-update", () => {
+    event.sender.send('auto-updater-message', {
+      message: "checking for updates...",
+      type: "is-light"
+    })
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    event.sender.send("update-not-available")
+  });
+
+  autoUpdater.on("update-available", () => {
+    event.sender.send('auto-updater-message', {
+      message: "update available!",
+      type: "is-success"
+    })
+  });
+
+  autoUpdater.on("error", error => {
+    console.error(error)
+    event.sender.send('auto-updater-message', {
+      message: error,
+      type: "is-danger"
+    })
+  });
+
+  autoUpdater.on("update-downloaded", () => {
+    // trigger app to close and update install
+    event.sender.send('auto-updater-message', {
+      message: "installing update...",
+      type: "is-success"
+    })
+    autoUpdater.quitAndInstall();
+  });
+
+  autoUpdater.checkForUpdates();
+})
 
 // setup authenticator in the main process
 ipcMain.on('authenticate', (event, client) => {
@@ -140,41 +165,7 @@ app.on('ready', async () => {
     await installVueDevtools()
   }
   createWindow()
-  // autoUpdater.checkForUpdates();
-  autoUpdater.checkForUpdatesAndNotify();
 })
-
-// autoUpdater.on("checking-for-update", () => {
-//   this.$toast.open({
-//     message: "Checking for an update...",
-//     position: "is-bottom",
-//     type: "is-info"
-//   });
-// });
-
-// autoUpdater.on("update-available", () => {
-//   this.$toast.open({
-//     message: "Update Available!",
-//     position: "is-bottom",
-//     type: "is-success"
-//   });
-// });
-
-// autoUpdater.on("update-not-available", () => {
-//   this.$toast.open({
-//     message: "No Update Available",
-//     position: "is-bottom",
-//     type: "is-info"
-//   });
-// });
-
-// autoUpdater.on("error", error => {
-//   this.$toast.open({
-//     message: `Error: ${error}`,
-//     position: "is-bottom",
-//     type: "is-danger"
-//   });
-// });
 
 // autoUpdater.on("download-progress", progressObj => {
 //   let log_message = "Download speed: " + progressObj.bytesPerSecond;
@@ -192,16 +183,6 @@ app.on('ready', async () => {
 //     position: "is-bottom",
 //     type: "is-info"
 //   });
-// });
-
-// autoUpdater.on("update-downloaded", () => {
-//   this.$toast.open({
-//     message: "Update Downloaded!",
-//     position: "is-bottom",
-//     type: "is-success"
-//   });
-//   trigger app to close and update install
-//   autoUpdater.quitAndInstall();
 // });
 
 // Exit cleanly on request from parent process in development mode.

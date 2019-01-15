@@ -35,17 +35,29 @@ export default {
     };
   },
   mounted() {
-    // this.enableAutoStart();
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        this.flashMessage("signing in...", "is-light");
-        this.signIn();
-      } else {
-        this.authenticating = false;
-      }
-    });
+    this.enableAutoStart();
+    this.checkForUpdates();
   },
   methods: {
+    checkForUpdates() {
+      ipcRenderer.send("check-for-updates", "payload");
+      ipcRenderer.on("auto-updater-message", (event, payload) => {
+        this.flashMessage(payload.message, payload.type);
+      });
+      ipcRenderer.on("update-not-available", () => {
+        this.firebaseAuthListener();
+      });
+    },
+    firebaseAuthListener() {
+      firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+          this.flashMessage("signing in...", "is-light");
+          this.signIn();
+        } else {
+          this.authenticating = false;
+        }
+      });
+    },
     checkForProcessesOpen(process) {
       return new Promise(resolve => {
         psList().then(data => {
@@ -60,22 +72,19 @@ export default {
       });
     },
     enableAutoStart() {
-      let appPath = createActualPath(
-        "$USERPROFILE\\AppData\\Local\\Programs\\Dot-Deployer\\Dot-Deployer.exe"
-      );
+      // app path will be automatically detected by auto launch
       const DeployerAutoLaunch = new AutoLaunch({
-        name: "Dot-Deployer",
-        path: appPath
+        name: "Dot Deployer"
       });
-      DeployerAutoLaunch.isEnabled().then(() => {
-        DeployerAutoLaunch.enable();
+      DeployerAutoLaunch.isEnabled().then(isEnabled => {
+        if (!isEnabled) {
+          DeployerAutoLaunch.enable();
+        }
       });
-      // .catch(error => {
-      //   console.error("Error Enabling AutoLaunch: ", error);
-      // });
     },
     uninstallAppManager() {
       return new Promise((resolve, reject) => {
+        console.log("Direct Variable Test: ", process.env);
         let uninstallPath = createActualPath(
           "$USERPROFILE\\AppData\\Local\\WeWork\\Update.exe"
         );
@@ -115,21 +124,17 @@ export default {
         });
       });
     },
-    createTokenListener() {
-      // console.log("Token Listener Created...");
-      ipcRenderer.on("tokens", (event, tokens) => {
-        this.processSignIn(tokens);
-      });
-    },
     authenticate() {
       this.authenticating = true;
-      this.createTokenListener();
       ipcRenderer.send("authenticate", {
         id: process.env.VUE_APP_CLIENTID,
         secret: process.env.VUE_APP_CLIENTSECRET
       });
+      ipcRenderer.on("tokens", (event, tokens) => {
+        this.signInWithTokens(tokens);
+      });
     },
-    processSignIn(tokens) {
+    signInWithTokens(tokens) {
       var credential = firebase.auth.GoogleAuthProvider.credential(
         tokens.id_token,
         tokens.access_token
@@ -193,14 +198,6 @@ export default {
       this.authenticating = false;
       this.$router.push("manage");
     }
-  },
-  computed: {
-    repositories() {
-      return this.$store.state.Deployer.repositories.repositories;
-    },
-    installs() {
-      return this.$store.state.Deployer.installs;
-    }
   }
 };
 </script>
@@ -210,11 +207,8 @@ export default {
     font-family: $font-stack
   button.login
     height: 24px
-    margin-top: -100px
+    margin-top: -95px
   img.logo
     height: 200px
     margin-top: -5px
-  div.message
-    margin-top: -40px
-    background-color: $white
 </style>
