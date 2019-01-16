@@ -34,6 +34,12 @@ const {
   ipcMain
 } = require('electron')
 
+// function to return environment variable
+ipcMain.on('get-process-env-variable', (event, variable) => {
+  event.sender.send("environment-variable-found", process.env[variable])
+})
+
+// messaging system for autoUpdater to render process
 ipcMain.on('check-for-updates', (event) => {
   autoUpdater.on("checking-for-update", () => {
     event.sender.send('auto-updater-message', {
@@ -72,6 +78,8 @@ ipcMain.on('check-for-updates', (event) => {
 
   autoUpdater.checkForUpdates();
 })
+
+
 
 // setup authenticator in the main process
 ipcMain.on('authenticate', (event, client) => {

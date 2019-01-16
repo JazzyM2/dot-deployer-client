@@ -4,7 +4,7 @@ const firebase = require('firebase')
 // creates an axios backend for API calls
 let $backend = axios.create({
   baseURL: process.env.VUE_APP_APIURL,
-  timeout: 50000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }

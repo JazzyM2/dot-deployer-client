@@ -1,16 +1,17 @@
 const _ = require('lodash')
+const {
+  ipcRenderer
+} = require("electron");
 
-function ownerId(repository) {
-  let owner = repository.full_name.split('/')[0]
+const ownerId = (repository) => {
+  let owner = repository.owner.login
   let id = repository.id
   return `${owner}/${id}`
 }
-
-function ownerName(repository) {
+const ownerName = (repository) => {
   return repository.full_name
 }
-
-function flattenObject(object) {
+const flattenObject = (object) => {
   let flattenedObjs = _.toPairs(object).map((obj) => {
     let flattenedObj = obj[1]
     flattenedObj.key = obj[0]
@@ -18,10 +19,10 @@ function flattenObject(object) {
   })
   return flattenedObjs
 }
-
-function createActualPath(path) {
-  let varsPresent = true
-  while (varsPresent) {
+const createActualPath = (path) => {
+  // this function will parse a single environment variable from a string
+  // marked with a '$' before the varialbe, and return the string
+  return new Promise((resolve) => {
     let dollar = path.indexOf('$')
     if (dollar !== -1) {
       let slash = path.indexOf('\\', dollar)
@@ -31,18 +32,15 @@ function createActualPath(path) {
       } else {
         variable = path.substring(dollar - 1, slash)
       }
-      console.log("Variable Extracted: ", variable)
       let environmentVar = variable.substring(1)
-      console.log("Environment Variable String: ", environmentVar)
-      let environment = process.env[environmentVar]
-      console.log("Environment Variable: ", environment)
-      path = path.replace(variable, environment)
-      console.log("Path: ", path)
+      ipcRenderer.send("get-process-env-variable", environmentVar);
+      ipcRenderer.on("environment-variable-found", (event, result) => {
+        resolve(path.replace(variable, result))
+      })
     } else {
-      varsPresent = false
+      resolve(path)
     }
-  }
-  return path
+  })
 }
 
 export {

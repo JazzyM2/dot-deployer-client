@@ -39,7 +39,7 @@
           </td>
           <td class="action">
             <button
-              v-if="isInstalled(download) && hasUninstallData(download)"
+              v-if="isInstalled(download)"
               @click="uninstall(download)"
               class="animated uninstall fadeIn button is-outlined is-rounded is-small is-info"
             >Uninstall</button>
@@ -71,12 +71,8 @@
 <script>
 import Dropdown from "./Dropdown";
 import Modal from "./Modal";
-import {
-  ownerId,
-  ownerName,
-  flattenObject,
-  createActualPath
-} from "../store/helpers";
+
+import { ownerId, ownerName, createActualPath } from "../helpers.js";
 
 const _ = require("lodash");
 const fs = require("fs-extra");
@@ -255,15 +251,6 @@ export default {
         return null;
       }
     },
-    hasUninstallData(repository) {
-      let identity = ownerId(repository);
-      let deploy = this.deployers[identity];
-      if (deploy) {
-        return deploy.uninstall;
-      } else {
-        return false;
-      }
-    },
     uninstall(download) {
       this.$store.dispatch("Deployer/setDeploying", true);
       this.deployerDataExists(download)
@@ -362,16 +349,10 @@ export default {
         resolve();
       });
     },
-    deployerDataExists(download) {
+    deployerDataExists() {
       // checks if .deployer data exists and is valid JSON
-      return new Promise((resolve, reject) => {
-        let identity = ownerId(download);
-        let deployData = this.deployers[identity];
-        if (deployData) {
-          resolve(deployData);
-        } else {
-          reject(".deployer data not found!"); // eslint-disable-line
-        }
+      return new Promise(resolve => {
+        resolve(true);
       });
     },
     processUninstall(uninstall) {
@@ -612,13 +593,6 @@ export default {
     },
     generateDropdownMenu(download) {
       let menu = [];
-      let deployData = this.deployers[ownerId(download)];
-      let autoupdate = false;
-      if (deployData) {
-        if (deployData.autoupdate) {
-          autoupdate = true;
-        }
-      }
       _.forEach(this.releases[ownerId(download)], release => {
         let tag = release.tag_name;
         let description = release.body;
@@ -632,7 +606,7 @@ export default {
           description: description,
           release: title
         });
-        if (!prerelease && autoupdate) {
+        if (!prerelease) {
           // if a release is found, stop generating the menu
           return false;
         }
@@ -679,35 +653,14 @@ export default {
     downloadSelected() {
       return this.$store.state.Deployer.downloadSelected;
     },
-    gitHubActivity() {
-      return this.$store.state.Deployer.github;
-    },
     computerName() {
       return process.env.COMPUTERNAME;
     },
     installs() {
       return this.$store.state.Deployer.installs;
     },
-    contents() {
-      return this.$store.state.Deployer.contents;
-    },
-    deployers() {
-      return this.$store.state.Deployer.deployers;
-    },
     releases() {
       return this.$store.state.Deployer.releases;
-    },
-    downloads() {
-      return flattenObject(this.$store.state.Deployer.downloads);
-    },
-    repositories() {
-      return this.$store.state.Deployer.repositories.repositories;
-    }
-  },
-  watch: {
-    gitHubActivity() {
-      this.$forceUpdate();
-      this.checkForUpdates();
     }
   }
 };

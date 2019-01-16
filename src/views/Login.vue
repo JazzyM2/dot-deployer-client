@@ -18,7 +18,7 @@
 </template>
 
 <script>
-import { createActualPath } from "../store/helpers";
+import { createActualPath } from "../helpers.js";
 const firebase = require("firebase");
 const { ipcRenderer } = require("electron");
 const psList = require("ps-list");
@@ -84,7 +84,6 @@ export default {
     },
     uninstallAppManager() {
       return new Promise((resolve, reject) => {
-        console.log("Direct Variable Test: ", process.env);
         let uninstallPath = createActualPath(
           "$USERPROFILE\\AppData\\Local\\WeWork\\Update.exe"
         );
@@ -150,22 +149,39 @@ export default {
     },
     signIn() {
       // this.$store.dispatch("Deployer/updateRollbarConfig", user);
-      this.$store.dispatch("Deployer/githubListener");
+      this.$store.dispatch("Deployer/releaseListener");
+      this.$store.dispatch("Deployer/repositoryListener");
 
-      let github = this.$store.dispatch("Deployer/pullGitHub");
-      let admins = this.$store.dispatch("Deployer/fireListener", {
-        db: "admins",
-        store: "setAdmins"
+      let fetchGitHub = this.$store.dispatch(
+        "Deployer/fetchRepositoriesAndReleases"
+      );
+      let users = this.$store.dispatch("Deployer/fireListener", {
+        db: "users",
+        store: "setUsers"
       });
       let installs = this.$store.dispatch("Deployer/fireListener", {
         db: "installs",
         store: "setInstalls"
       });
-      let downloads = this.$store.dispatch("Deployer/fireListener", {
+      let metadata = this.$store.dispatch("Deployer/fireListener", {
         db: "repositories",
-        store: "setDownloads"
+        store: "setMetadata"
       });
-      Promise.all([admins, installs, downloads, github]).then(
+
+      fetchGitHub.then(() => {
+        console.log("GitHub Fetch Complete!");
+      });
+      users.then(() => {
+        console.log("User Listener Complete!");
+      });
+      installs.then(() => {
+        console.log("Installs Listener Complete!");
+      });
+      metadata.then(() => {
+        console.log("Metadata Listener Complete!");
+      });
+
+      Promise.all([users, installs, metadata, fetchGitHub]).then(
         () => this.handleSignInSuccess(),
         error => this.handleSignInFailure(error)
       );
