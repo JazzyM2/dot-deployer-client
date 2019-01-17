@@ -109,7 +109,7 @@
 </template>
 
 <script>
-import { flattenObject } from "../store/helpers";
+import { flattenObject } from "../helpers.js";
 const _ = require("lodash");
 
 export default {

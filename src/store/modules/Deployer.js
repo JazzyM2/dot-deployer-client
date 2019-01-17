@@ -1,9 +1,10 @@
 import backend from '../backend'
 import firebase from 'firebase'
+
 import {
-  ownerName,
-  ownerId
-} from '../helpers'
+  ownerId,
+  ownerName
+} from "../../helpers.js";
 
 const fs = require('fs-extra')
 const request = require('request')
@@ -12,21 +13,16 @@ const _ = require('lodash')
 const baseURL = process.env.VUE_APP_APIURL
 
 const state = {
-  // deployer github repo id
-  supports: ['2.0.0'],
+  supports: ['3.0.0'],
   message: null,
   deploying: false,
   progress: null,
   modalActive: false,
-  downloadSelected: null,
-  admins: {},
+  users: {},
   installs: {},
   repositories: {},
-  contents: {},
-  releases: {},
-  downloads: {},
-  deployers: {},
-  github: 0
+  metadata: {},
+  releases: {}
 }
 
 const mutations = {
@@ -42,35 +38,23 @@ const mutations = {
   setModalActive(state, bool) {
     state.modalActive = bool
   },
-  setDownloadSelected(state, payload) {
-    state.downloadSelected = payload
-  },
   popMessage(state) {
     state.message = null
   },
   setRepositories(state, repositories) {
     state.repositories = repositories
   },
-  setAdmins(state, admins) {
-    state.admins = admins
+  setUsers(state, users) {
+    state.users = users
   },
   setInstalls(state, installs) {
     state.installs = installs
   },
-  setDownloads(state, downloads) {
-    state.downloads = downloads
-  },
-  setContents(state, payload) {
-    state.contents[payload.name] = payload.contents
+  setMetadata(state, metadata) {
+    state.metadata = metadata
   },
   setReleases(state, payload) {
     state.releases[payload.name] = payload.releases
-  },
-  setDeployers(state, payload) {
-    state.deployers[payload.name] = payload.deployer
-  },
-  refreshGithub(state) {
-    state.github = state.github + 1
   }
 }
 
@@ -96,9 +80,6 @@ const actions = {
   setModalActive: (context, bool) => {
     return context.commit('setModalActive', bool)
   },
-  setDownloadSelected: (context, payload) => {
-    return context.commit('setDownloadSelected', payload)
-  },
   flashMessage: (context, message) => {
     context.commit('addMessage', message)
     setTimeout(function () {
@@ -115,7 +96,7 @@ const actions = {
       })
     })
   },
-  pullGitHub: (context) => {
+  fetchRepositoriesAndReleases: (context) => {
     return new Promise((resolve, reject) => {
       // refresh github information on login
       context.dispatch('repositories').then(() => {
@@ -133,27 +114,22 @@ const actions = {
       })
     })
   },
-  githubListener: () => {
-    // this listener will trigger anytime data is removed from db.github
-    // a github webhook pushes the update to the database, and a cloud function automatically removes it
-    // this action will trigger the below listener
-    return firebase.database().ref('github').on('child_removed', (snapshot) => {
+  repositoryListener: (context) => {
+    return firebase.database().ref('installation_repositories').on('child_removed', () => {
+      // fetch repositories from github, one or multiple have been added or removed
+      // a cloud function will consume the github webhook payload for repo changes and mirror the database
+      // for option to add custom metadata.  when child is deleted, the database has been successfully mirrored already
+      context.dispatch('fetchRepositoriesAndReleases')
+    })
+  },
+  releaseListener: (context) => {
+    // this listener will trigger anytime data is removed from db.release
+    // a github webhook pushes the github payload to the database, and a cloud function automatically removes it
+    // this delete action will trigger the below listener
+    return firebase.database().ref('release').on('child_removed', (snapshot) => {
       const snapshotData = snapshot.val()
-      console.log('GitHub Action: ', snapshotData)
-
-      // TODO fetch available repositories if github action is such
-      // context.dispatch('repositories')
-
-      // TODO fetch new contents and releases if github action is such
-      // const identity = ownerName(repo)
-      // context.dispatch('contents', identity)
-      // context.dispatch('releases', identity)
-      // context.dispatch('getFileJSON', {
-      //   name: repo.name,
-      //   path: '.deployer',
-      //   repository: identity
-      // })
-      // context.commit('refreshGithub')
+      let repository = snapshotData.repository
+      context.dispatch('releases', repository)
     });
   },
   updateInstall: (context, payload) => {
@@ -178,30 +154,30 @@ const actions = {
       resolve()
     })
   },
-  addAdmin: (context, email) => {
-    firebase.database().ref('admins').push({
-      email: email
-    })
-  },
-  deleteAdmin: (context, key) => {
-    firebase.database().ref('admins/' + key).remove()
-  },
-  addRepo: (context, repo) => {
-    return new Promise((resolve) => {
-      let payload = _.cloneDeep(repo)
-      payload.added_by = {}
-      payload.added_by.email = firebase.auth().currentUser.email
-      payload.added_by.photo = firebase.auth().currentUser.photoURL
-      firebase.database().ref('repositories').push(payload)
-      resolve()
-    })
-  },
-  deleteRepo: (context, key) => {
-    return new Promise((resolve) => {
-      firebase.database().ref('repositories/' + key).remove()
-      resolve()
-    })
-  },
+  // addAdmin: (context, email) => {
+  //   firebase.database().ref('admins').push({
+  //     email: email
+  //   })
+  // },
+  // deleteAdmin: (context, key) => {
+  //   firebase.database().ref('admins/' + key).remove()
+  // },
+  // addRepo: (context, repo) => {
+  //   return new Promise((resolve) => {
+  //     let payload = _.cloneDeep(repo)
+  //     payload.added_by = {}
+  //     payload.added_by.email = firebase.auth().currentUser.email
+  //     payload.added_by.photo = firebase.auth().currentUser.photoURL
+  //     firebase.database().ref('repositories').push(payload)
+  //     resolve()
+  //   })
+  // },
+  // deleteRepo: (context, key) => {
+  //   return new Promise((resolve) => {
+  //     firebase.database().ref('repositories/' + key).remove()
+  //     resolve()
+  //   })
+  // },
   repositories: (context) => {
     return new Promise((resolve, reject) => {
       backend.getRepositories().then(
@@ -210,22 +186,9 @@ const actions = {
       )
     })
   },
-  // contents: (context, repo) => {
-  //   const identity = ownerId(repo)
-  //   const identityName = ownerName(repo)
-  //   return new Promise((resolve, reject) => {
-  //     backend.getContents(identityName).then(
-  //       response => resolve(context.commit('setContents', {
-  //         name: identity,
-  //         contents: response
-  //       })),
-  //       error => reject(error)
-  //     )
-  //   })
-  // },
-  releases: (context, repo) => {
-    const identity = ownerId(repo)
-    const identityName = ownerName(repo)
+  releases: (context, repository) => {
+    const identity = ownerId(repository)
+    const identityName = ownerName(repository)
     return new Promise((resolve, reject) => {
       backend.getReleases(identityName).then(
         response => resolve(context.commit('setReleases', {
@@ -281,51 +244,51 @@ const actions = {
       })
     })
   },
-  getFileJSON: (context, payload) => {
-    return new Promise((resolve, reject) => {
-      const path = `${process.env.TEMP}\\${payload.name}.json`
-      const url = `${baseURL}file?path=${payload.path}&repository=${payload.ownerName}`
-      firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-          user.getIdToken(true).then((token) => {
-            request({
-              url: url,
-              encoding: null,
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            }, (error, resp, body) => {
-              if (error) {
-                reject(error)
-              } else {
-                // create the .deployer file for chosen repository
-                fs.outputFile(path, body).then(() => {
-                  // read file to create / verify json!
-                  fs.readJson(path).then((deployerData) => {
-                    context.commit('setDeployers', {
-                      name: payload.ownerId,
-                      deployer: deployerData
-                    })
-                    resolve()
-                  }).catch(() => {
-                    context.commit('setDeployers', {
-                      name: payload.ownerId,
-                      deployer: null
-                    })
-                    resolve()
-                  })
-                }).catch(() => {
-                  reject(`Failed to write file to ${payload.path}`) // eslint-disable-line
-                })
-              }
-            })
-          })
-        } else {
-          reject('Please login') // eslint-disable-line
-        }
-      })
-    })
-  },
+  // getFileJSON: (context, payload) => {
+  //   return new Promise((resolve, reject) => {
+  //     const path = `${process.env.TEMP}\\${payload.name}.json`
+  //     const url = `${baseURL}file?path=${payload.path}&repository=${payload.helpers.ownerName}`
+  //     firebase.auth().onAuthStateChanged((user) => {
+  //       if (user) {
+  //         user.getIdToken(true).then((token) => {
+  //           request({
+  //             url: url,
+  //             encoding: null,
+  //             headers: {
+  //               Authorization: `Bearer ${token}`
+  //             }
+  //           }, (error, resp, body) => {
+  //             if (error) {
+  //               reject(error)
+  //             } else {
+  //               // create the .deployer file for chosen repository
+  //               fs.outputFile(path, body).then(() => {
+  //                 // read file to create / verify json!
+  //                 fs.readJson(path).then((deployerData) => {
+  //                   context.commit('setDeployers', {
+  //                     name: payload.helpers.ownerId,
+  //                     deployer: deployerData
+  //                   })
+  //                   resolve()
+  //                 }).catch(() => {
+  //                   context.commit('setDeployers', {
+  //                     name: payload.helpers.ownerId,
+  //                     deployer: null
+  //                   })
+  //                   resolve()
+  //                 })
+  //               }).catch(() => {
+  //                 reject(`Failed to write file to ${payload.path}`) // eslint-disable-line
+  //               })
+  //             }
+  //           })
+  //         })
+  //       } else {
+  //         reject('Please login') // eslint-disable-line
+  //       }
+  //     })
+  //   })
+  // },
   download: (context, payload) => {
     return new Promise((resolve, reject) => {
       const path = `${process.env.TEMP}\\${payload.name}.zip`

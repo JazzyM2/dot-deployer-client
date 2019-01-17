@@ -56,8 +56,8 @@
 
 <script>
 import DotTable from "@/components/DotTable";
-import { ownerId, flattenObject } from "../store/helpers";
 
+import { ownerId, flattenObject } from "../helpers.js";
 const _ = require("lodash");
 const firebase = require("firebase");
 const { shell } = require("electron");
@@ -88,9 +88,6 @@ export default {
     }
   },
   computed: {
-    deployers() {
-      return this.$store.state.Deployer.deployers;
-    },
     downloadSelected() {
       return this.$store.state.Deployer.downloadSelected;
     },
@@ -109,32 +106,39 @@ export default {
     repositories() {
       return this.$store.state.Deployer.repositories.repositories;
     },
-    downloads() {
-      return flattenObject(this.$store.state.Deployer.downloads);
+    metadata() {
+      return flattenObject(this.$store.state.Deployer.metadata);
     },
-    unreleased() {
-      let unreleased = [];
-      _.forEach(this.repositories, repo => {
-        if (!_.find(this.downloads, { id: repo.id })) {
-          unreleased.push(repo);
-        }
-      });
-      return unreleased;
-    },
-    admins() {
-      return this.$store.state.Deployer.admins;
+    // unreleased() {
+    //   let unreleased = [];
+    //   _.forEach(this.repositories, repo => {
+    //     if (!_.find(this.metadata, { id: repo.id })) {
+    //       unreleased.push(repo);
+    //     }
+    //   });
+    //   return unreleased;
+    // },
+    users() {
+      return this.$store.state.Deployer.users;
     },
     userEmail() {
-      return firebase.auth().currentUser.email;
+      let user = firebase.auth().currentUser;
+      return user ? firebase.auth().currentUser.email : null;
     },
     isAdmin() {
-      return _.find(this.admins, { email: this.userEmail });
+      let user = _.find(this.users, { email: this.userEmail });
+      if (user != null) {
+        return user.role == "admin";
+      } else {
+        return false;
+      }
     },
     getSource() {
       if (this.isAdmin) {
-        return this.downloads.concat(this.unreleased);
+        return this.repositories;
       } else {
-        return this.downloads;
+        // TODO return a list of repositories that match the users role
+        return this.repositories;
       }
     }
   }

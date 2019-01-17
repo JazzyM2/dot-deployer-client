@@ -6,10 +6,9 @@
         @click="toggleMenu()"
         :class="{'button': true, 'dropdown': true, 'is-small': true, 'is-rounded': true, 'is-outlined': true, 'is-dark': !update, 'is-danger': update}"
       >
-        <span>{{ title }}</span>
-        <span class="icon">
-          <i class="fa fa-caret-down" aria-hidden="true"></i>
-        </span>
+        {{ title }}
+        &nbsp;
+        <i class="fa fa-caret-down" aria-hidden="true"></i>
       </button>
     </div>
     <div v-show="active" class="dropdown-menu" @mouseleave="hide()">
@@ -25,14 +24,11 @@
         >
           <b
             :class="{'title': true, 'pre-release': isPreRelease(value), 'release': !isPreRelease(value)}"
-          >{{ value.tag }}</b>
-          <i
-            :class="{'title': true, 'pre-release': isPreRelease(value), 'release': !isPreRelease(value)}"
-          >{{ value.release | chopString(30) }}</i>
+          >{{ value.release | chopString(30) }}</b>
           <button
             :class="{'is-static': true, 'is-rounded': true, 'isprerelease': true, 'button': true, 'is-small': true, 'is-outlined': true, 'is-warning': isPreRelease(value), 'is-primary': !isPreRelease(value)}"
           >
-            <p class="small">{{ describeRelease(value) }}</p>
+            <p class="small">{{ value.tag }} - {{ describeRelease(value) }}</p>
           </button>
           <p class="description info">{{ value.description | chopString(70) }}</p>
         </a>
@@ -111,11 +107,11 @@ export default {
   .small
     font-size: 9px
   button.dropdown
-    height: 18px
+    // height: 18px
   button.isprerelease
     height: 8px
-    padding: 1px
-    padding-bottom: 5px
+    // padding: 1px
+    // padding-top: 5px
     margin-left: 3px
-    margin-top: 3px
+    margin-top: 7px
 </style>

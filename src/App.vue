@@ -22,7 +22,7 @@ section.section
   position: absolute
   overflow-y: auto
   padding: 0px
-  top: 95px
+  top: 80px
   left: 0px
   right: 0px
   bottom: 0px

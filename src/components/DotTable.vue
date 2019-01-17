@@ -1,66 +1,41 @@
 <template>
   <div>
-    <modal
-      v-if="confirm"
-      title="Tool Release"
-      :message="modalMessage"
-      @yes="toggleRelease()"
-      @close="cancel()"
-    ></modal>
     <table class="table is-narrow is-striped is-hoverable is-fullwidth animated fadeIn">
       <tbody>
-        <tr v-for="(download, index) in source" :key="index">
+        <tr v-for="(repository, index) in source" :key="index">
           <td class="insights">
             <span class="icon">
-              <i class="expand fa fa-info" aria-hidden="true" @click="launchModal(download)"></i>
+              <i class="expand fa fa-info" aria-hidden="true" @click="launchModal(repository)"></i>
             </span>
           </td>
           <td class="tool">
-            <p class="download-title">{{ download.name | chopString(30) | capitalize }}</p>
+            <p class="download-title">{{ repository.name | chopString(30) | capitalize }}</p>
           </td>
           <td class="description">
-            <p class="download-description">{{ download.description }}</p>
+            <p class="download-description">{{ repository.description }}</p>
           </td>
           <td class="version">
             <button
-              v-if="isInstalled(download)"
-              :class="{'is-static': true, 'button': true, 'animated': true, 'fadeIn': true, 'is-outlined': true, 'is-rounded': true, 'is-small': true, 'is-warning': isInstalledPreRelease(download), 'is-primary': !isInstalledPreRelease(download)}"
-            >{{ getInstalledTag(download) }}</button>
+              v-if="isInstalled(repository)"
+              :class="{'is-static': true, 'button': true, 'animated': true, 'fadeIn': true, 'is-outlined': true, 'is-rounded': true, 'is-small': true, 'is-warning': isInstalledPreRelease(repository), 'is-primary': !isInstalledPreRelease(repository)}"
+            >{{ getInstalledTag(repository) }}</button>
           </td>
           <td class="action">
             <dropdown
               class="dropdown"
               title="Install"
-              :update="isAnyUpdatePresent(download)"
-              :menu="generateDropdownMenu(download)"
-              :tag="getInstalledTag(download)"
-              @change-event="downloadTag($event, download)"
+              :update="isAnyUpdatePresent(repository)"
+              :menu="generateDropdownMenu(repository)"
+              :tag="getInstalledTag(repository)"
+              @change-event="downloadTag($event, repository)"
             ></dropdown>
           </td>
           <td class="action">
             <button
-              v-if="isInstalled(download) && hasUninstallData(download)"
-              @click="uninstall(download)"
+              v-if="isInstalled(repository)"
+              @click="uninstall(repository)"
               class="animated uninstall fadeIn button is-outlined is-rounded is-small is-info"
             >Uninstall</button>
-          </td>
-          <td v-if="admin" class="admin">
-            <button
-              v-if="!isAvailable(download)"
-              onclick="this.blur()"
-              @click="confirmReleaseToggle(download)"
-              class="button is-outlined is-small is-rounded"
-            >
-              <i class="fa fa-rocket yellow"></i>
-            </button>
-            <button
-              v-else
-              onclick="this.blur()"
-              @click="confirmReleaseToggle(download)"
-              class="button is-outlined is-small is-rounded"
-            >
-              <i class="fa fa-trash red"></i>
-            </button>
           </td>
         </tr>
       </tbody>
@@ -70,13 +45,8 @@
 
 <script>
 import Dropdown from "./Dropdown";
-import Modal from "./Modal";
-import {
-  ownerId,
-  ownerName,
-  flattenObject,
-  createActualPath
-} from "../store/helpers";
+
+import { ownerId, ownerName, createActualPath } from "../helpers.js";
 
 const _ = require("lodash");
 const fs = require("fs-extra");
@@ -93,58 +63,11 @@ export default {
     };
   },
   components: {
-    dropdown: Dropdown,
-    modal: Modal
+    dropdown: Dropdown
   },
-  mounted() {
-    // this.checkForUpdates();
-  },
+  mounted() {},
   props: ["source", "admin"],
   methods: {
-    confirmReleaseToggle(repository) {
-      // launches confirmation modal
-      this.$store.dispatch("Deployer/setDownloadSelected", repository);
-      let download = this.isAvailable(this.downloadSelected);
-      if (download) {
-        this.modalMessage = `Are you sure you want to remove ${
-          this.downloadSelected.name
-        } from available tools?`;
-      } else {
-        this.modalMessage = `Are you sure you want to release ${
-          this.downloadSelected.name
-        } to all users?`;
-      }
-      this.confirm = true;
-    },
-    cancel() {
-      this.$store.dispatch("Deployer/setDownloadSelected", null);
-      this.confirm = false;
-    },
-    toggleRelease() {
-      let download = this.isAvailable(this.downloadSelected);
-      if (download) {
-        this.$store.dispatch("Deployer/deleteRepo", download.key);
-      } else {
-        this.$store.dispatch("Deployer/addRepo", this.downloadSelected);
-      }
-      this.confirm = false;
-    },
-    checkForUpdates() {
-      console.log("Checking for updates...");
-      _.forEach(this.source, download => {
-        if (this.isUpdateAvailable(download)) {
-          this.deployerDataExists(download)
-            .then(deployData => {
-              if (deployData.autoupdate) {
-                this.downloadUpdate(download);
-              }
-            })
-            .catch(error => {
-              this.flashMessage(error, true);
-            });
-        }
-      });
-    },
     getIndexOfTag(releases, releaseTag) {
       let foundRelease = _.find(releases, { tag_name: releaseTag });
       return releases.indexOf(foundRelease);
@@ -165,22 +88,26 @@ export default {
     isAnyUpdatePresent(download) {
       let identity = ownerId(download);
       let releases = this.releases[identity];
-      if (releases.length > 0) {
-        let installedTag = this.getInstalledTag(download);
-        let latestTag = releases[0].tag_name;
-        if (!installedTag || !latestTag) {
-          return false; // do not try to update
-        }
-        let indexOfInstalled = this.getIndexOfTag(releases, installedTag);
-        let indexOfLatest = this.getIndexOfTag(releases, latestTag);
-        if (indexOfInstalled === -1) {
-          // install is no longer present in releases, update!
-          return true;
-        } else if (indexOfInstalled > indexOfLatest) {
-          // an update is available!
-          return true;
+      if (releases) {
+        if (releases.length > 0) {
+          let installedTag = this.getInstalledTag(download);
+          let latestTag = releases[0].tag_name;
+          if (!installedTag || !latestTag) {
+            return false; // do not try to update
+          }
+          let indexOfInstalled = this.getIndexOfTag(releases, installedTag);
+          let indexOfLatest = this.getIndexOfTag(releases, latestTag);
+          if (indexOfInstalled === -1) {
+            // install is no longer present in releases, update!
+            return true;
+          } else if (indexOfInstalled > indexOfLatest) {
+            // an update is available!
+            return true;
+          } else {
+            // no update available
+            return false;
+          }
         } else {
-          // no update available
           return false;
         }
       } else {
@@ -253,15 +180,6 @@ export default {
         return installed.prerelease;
       } else {
         return null;
-      }
-    },
-    hasUninstallData(repository) {
-      let identity = ownerId(repository);
-      let deploy = this.deployers[identity];
-      if (deploy) {
-        return deploy.uninstall;
-      } else {
-        return false;
       }
     },
     uninstall(download) {
@@ -362,16 +280,10 @@ export default {
         resolve();
       });
     },
-    deployerDataExists(download) {
+    deployerDataExists() {
       // checks if .deployer data exists and is valid JSON
-      return new Promise((resolve, reject) => {
-        let identity = ownerId(download);
-        let deployData = this.deployers[identity];
-        if (deployData) {
-          resolve(deployData);
-        } else {
-          reject(".deployer data not found!"); // eslint-disable-line
-        }
+      return new Promise(resolve => {
+        resolve(true);
       });
     },
     processUninstall(uninstall) {
@@ -512,14 +424,14 @@ export default {
           });
       });
     },
-    downloadTag(tag, download) {
+    downloadTag(tag, repository) {
       // launch loading screen
       this.$store.dispatch("Deployer/setDeploying", true);
-      let release = _.find(this.releases[ownerId(download)], {
+      let release = _.find(this.releases[ownerId(repository)], {
         tag_name: tag
       });
       // fetch deployer data for install and check schema and dependencies
-      this.deployerDataExists(download)
+      this.deployerDataExists(repository)
         .then(deploy => {
           this.supportsSchema(deploy.version)
             .then(() => {
@@ -527,7 +439,7 @@ export default {
                 .then(() => {
                   // validate deployer data
                   this.$store.dispatch("Deployer/setProgress", {
-                    tool: download.name,
+                    tool: repository.name,
                     title: `Validating .deployer data...`,
                     value: 0
                   });
@@ -536,7 +448,7 @@ export default {
                     .then(() => {
                       // check for open processes
                       this.$store.dispatch("Deployer/setProgress", {
-                        tool: download.name,
+                        tool: repository.name,
                         title: `Checking for open processes...`,
                         value: 20
                       });
@@ -544,30 +456,30 @@ export default {
                         .then(() => {
                           // uninstall current install
                           this.$store.dispatch("Deployer/setProgress", {
-                            tool: download.name,
+                            tool: repository.name,
                             title: `Uninstalling current files...`,
                             value: 40
                           });
                           this.processUninstall(deploy.uninstall)
                             .then(() => {
-                              // download files in repo (either zipball of contents or all assets)
+                              // repository files in repo (either zipball of contents or all assets)
                               this.$store.dispatch("Deployer/setProgress", {
-                                tool: download.name,
+                                tool: repository.name,
                                 title: `Downloading files...`,
                                 value: 60
                               });
-                              this.processDownload(deploy, download, release)
+                              this.processDownload(deploy, repository, release)
                                 .then(parentPath => {
                                   // install files
                                   this.$store.dispatch("Deployer/setProgress", {
-                                    tool: download.name,
+                                    tool: repository.name,
                                     title: `Installing files...`,
                                     value: 80
                                   });
                                   this.processInstall(deploy, parentPath)
                                     .then(() => {
                                       this.handleSuccessfulInstall(
-                                        download,
+                                        repository,
                                         tag
                                       );
                                     })
@@ -612,13 +524,6 @@ export default {
     },
     generateDropdownMenu(download) {
       let menu = [];
-      let deployData = this.deployers[ownerId(download)];
-      let autoupdate = false;
-      if (deployData) {
-        if (deployData.autoupdate) {
-          autoupdate = true;
-        }
-      }
       _.forEach(this.releases[ownerId(download)], release => {
         let tag = release.tag_name;
         let description = release.body;
@@ -632,7 +537,7 @@ export default {
           description: description,
           release: title
         });
-        if (!prerelease && autoupdate) {
+        if (!prerelease) {
           // if a release is found, stop generating the menu
           return false;
         }
@@ -676,59 +581,35 @@ export default {
     }
   },
   computed: {
-    downloadSelected() {
-      return this.$store.state.Deployer.downloadSelected;
-    },
-    gitHubActivity() {
-      return this.$store.state.Deployer.github;
-    },
     computerName() {
       return process.env.COMPUTERNAME;
     },
     installs() {
       return this.$store.state.Deployer.installs;
     },
-    contents() {
-      return this.$store.state.Deployer.contents;
-    },
-    deployers() {
-      return this.$store.state.Deployer.deployers;
-    },
     releases() {
       return this.$store.state.Deployer.releases;
-    },
-    downloads() {
-      return flattenObject(this.$store.state.Deployer.downloads);
-    },
-    repositories() {
-      return this.$store.state.Deployer.repositories.repositories;
-    }
-  },
-  watch: {
-    gitHubActivity() {
-      this.$forceUpdate();
-      this.checkForUpdates();
     }
   }
 };
 </script>
 
 <style lang="sass" scoped>
-  td.insights
-    width: 20px
+  // td.insights
+  //   width: 20px
   td.tool
-    width: 200px
-  td.description
-    width: 250px
-  td.version
-    width: 40px
-  td.action:not(:last-child)
-    padding-left: 4px
-    padding-right: 4px
-  button.is-rounded
-    height: 18px
-  button.uninstall
-    margin-left: 8px
+    width: 220px
+  // td.description
+  //   width: 250px
+  // td.version
+  //   width: 40px
+  // td.action:not(:last-child)
+  //   padding-left: 4px
+  //   padding-right: 4px
+  // button.is-rounded
+  //   height: 18px
+  // button.uninstall
+  //   margin-left: 8px
   i.expand 
     color: $info
     cursor: pointer
@@ -736,17 +617,10 @@ export default {
     color: $yellow
   i.red
     color: $danger
-  .dropdown
-    margin-top: 1px
   span.icon.admin
     cursor: pointer
   table
     font-size: 14px
-  .table-title
-    font-size: 12px
-    font-weight: bold
-    text-align: center
-    color: lighten($info, 20)
   .download-title
     font-size: 13px
     font-weight: bold

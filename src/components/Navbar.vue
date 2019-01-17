@@ -24,42 +24,42 @@
     </nav>
     <!-- NAVIGATION BAR -->
     <!-- MENU BAR -->
-    <div class="animated fadeIn level">
+    <div class="animated fadeInDown level">
       <div class="level-left">
         <button
           v-if="isAdmin"
-          :class="{'menu-item-left': true, 'button': true, 'is-small': true, 'is-outlined': route !== 'manage', 'is-dark': true}"
-          @click="goTo('manage')"
-        >Manage</button>
+          :class="{'menu-item-left': true, 'button': true, 'is-small': true, 'is-outlined': route !== 'install', 'is-dark': true}"
+          @click="goTo('install')"
+        >Install</button>
         <button
           v-if="isAdmin"
-          :class="{'menu-item-left': true, 'button': true, 'is-small': true, 'is-outlined': route !== 'developers', 'is-dark': true}"
-          @click="goTo('developers')"
-        >Developers</button>
+          :class="{'menu-item-left': true, 'button': true, 'is-small': true, 'is-outlined': route !== 'admin', 'is-dark': true}"
+          @click="goTo('admin')"
+        >Admin</button>
       </div>
       <div class="level-right">
         <button
           @click="launchUrl(getUrl('documentation'))"
           v-if="help"
           onclick="this.blur();"
-          class="animated fadeInRight button help menu-item-right is-small is-outlined is-info"
+          class="animated fadeInRight button help menu-item-right is-small is-outlined is-dark"
         >Documentation</button>
         <button
           @click="launchUrl(getUrl('feedback'))"
           v-if="help"
           onclick="this.blur();"
-          class="animated fadeInRight button help menu-item-right is-small is-outlined is-info"
+          class="animated fadeInRight button help menu-item-right is-small is-outlined is-dark"
         >Feedback</button>
         <button
           @click="launchUrl(getUrl('support'))"
           v-if="help"
           onclick="this.blur();"
-          class="animated fadeInRight button help menu-item-right is-small is-outlined is-info"
+          class="animated fadeInRight button help menu-item-right is-small is-outlined is-dark"
         >Support</button>
         <button
           @click="help = !help"
           onclick="this.blur();"
-          class="button help menu-item-right is-small is-outlined is-info"
+          class="button help menu-item-right is-small is-outlined is-dark"
         >Help</button>
       </div>
     </div>
@@ -105,25 +105,29 @@ export default {
       return this.$route.name;
     },
     userImage() {
-      return firebase.auth().currentUser.photoURL;
+      let user = firebase.auth().currentUser;
+      return user ? firebase.auth().currentUser.photoURL : null;
     },
     message() {
       return this.$store.state.Deployer.message;
     },
-    deployers() {
-      return this.$store.state.Deployer.deployers;
-    },
-    admins() {
-      return this.$store.state.Deployer.admins;
+    users() {
+      return this.$store.state.Deployer.users;
     },
     installs() {
       return this.$store.state.Deployer.installs;
     },
     userEmail() {
-      return firebase.auth().currentUser.email;
+      let user = firebase.auth().currentUser;
+      return user ? firebase.auth().currentUser.email : null;
     },
     isAdmin() {
-      return _.find(this.admins, { email: this.userEmail });
+      let user = _.find(this.users, { email: this.userEmail });
+      if (user != null) {
+        return user.role == "admin";
+      } else {
+        return false;
+      }
     },
     version() {
       return process.env.VUE_APP_VERSION;
@@ -153,15 +157,12 @@ export default {
     margin-left: 8px
     margin-right: -8px
   button.menu-item-left
-    margin-right: 4px
-    height: 20px
-    margin-top: -1px
+    margin-left: 4px
+    margin-top: -2px
   button.menu-item-right
     margin-left: 4px
-    height: 20px
     margin-top: -1px
   button.signout
-    height: 20px
     margin-right: 12px
     margin-left: 12px
   b.version
