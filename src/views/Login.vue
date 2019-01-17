@@ -36,7 +36,9 @@ export default {
   },
   mounted() {
     this.enableAutoStart();
-    this.checkForUpdates();
+    process.env.NODE_ENV === "production"
+      ? this.checkForUpdates()
+      : this.firebaseAuthListener();
   },
   methods: {
     checkForUpdates() {
@@ -167,20 +169,6 @@ export default {
         db: "repositories",
         store: "setMetadata"
       });
-
-      fetchGitHub.then(() => {
-        console.log("GitHub Fetch Complete!");
-      });
-      users.then(() => {
-        console.log("User Listener Complete!");
-      });
-      installs.then(() => {
-        console.log("Installs Listener Complete!");
-      });
-      metadata.then(() => {
-        console.log("Metadata Listener Complete!");
-      });
-
       Promise.all([users, installs, metadata, fetchGitHub]).then(
         () => this.handleSignInSuccess(),
         error => this.handleSignInFailure(error)
@@ -212,7 +200,7 @@ export default {
     },
     continue() {
       this.authenticating = false;
-      this.$router.push("manage");
+      this.$router.push("install");
     }
   }
 };

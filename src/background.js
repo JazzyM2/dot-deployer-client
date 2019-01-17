@@ -54,7 +54,7 @@ ipcMain.on('check-for-updates', (event) => {
 
   autoUpdater.on("update-available", () => {
     event.sender.send('auto-updater-message', {
-      message: "update available!",
+      message: "update downloading...",
       type: "is-success"
     })
   });

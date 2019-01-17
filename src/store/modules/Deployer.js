@@ -18,7 +18,6 @@ const state = {
   deploying: false,
   progress: null,
   modalActive: false,
-  downloadSelected: null,
   users: {},
   installs: {},
   repositories: {},
@@ -38,9 +37,6 @@ const mutations = {
   },
   setModalActive(state, bool) {
     state.modalActive = bool
-  },
-  setDownloadSelected(state, payload) {
-    state.downloadSelected = payload
   },
   popMessage(state) {
     state.message = null
@@ -84,9 +80,6 @@ const actions = {
   setModalActive: (context, bool) => {
     return context.commit('setModalActive', bool)
   },
-  setDownloadSelected: (context, payload) => {
-    return context.commit('setDownloadSelected', payload)
-  },
   flashMessage: (context, message) => {
     context.commit('addMessage', message)
     setTimeout(function () {
@@ -126,19 +119,17 @@ const actions = {
       // fetch repositories from github, one or multiple have been added or removed
       // a cloud function will consume the github webhook payload for repo changes and mirror the database
       // for option to add custom metadata.  when child is deleted, the database has been successfully mirrored already
-      context.dispatch('repositories')
+      context.dispatch('fetchRepositoriesAndReleases')
     })
   },
-  releaseListener: () => {
+  releaseListener: (context) => {
     // this listener will trigger anytime data is removed from db.release
     // a github webhook pushes the github payload to the database, and a cloud function automatically removes it
     // this delete action will trigger the below listener
     return firebase.database().ref('release').on('child_removed', (snapshot) => {
       const snapshotData = snapshot.val()
-      console.log('Release Action: ', snapshotData)
-
-      // TODO fetch releases for given repository
-
+      let repository = snapshotData.repository
+      context.dispatch('releases', repository)
     });
   },
   updateInstall: (context, payload) => {

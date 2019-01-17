@@ -122,18 +122,23 @@ export default {
       return this.$store.state.Deployer.users;
     },
     userEmail() {
-      return firebase.auth().currentUser.email;
+      let user = firebase.auth().currentUser;
+      return user ? firebase.auth().currentUser.email : null;
     },
     isAdmin() {
       let user = _.find(this.users, { email: this.userEmail });
-      return user.role == "admin";
+      if (user != null) {
+        return user.role == "admin";
+      } else {
+        return false;
+      }
     },
     getSource() {
       if (this.isAdmin) {
         return this.repositories;
       } else {
         // TODO return a list of repositories that match the users role
-        return [];
+        return this.repositories;
       }
     }
   }
