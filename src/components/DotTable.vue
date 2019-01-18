@@ -424,11 +424,28 @@ export default {
           });
       });
     },
+    // install(tag, repository) {
+    //   // launch loading screen
+    //   this.$store.dispatch("Deployer/setDeploying", true);
+    //   let release = _.find(this.releases[ownerId(repository)], {
+    //     tag_name: tag
+    //   });
+    //   this.$store.dispatch("Deployer/setProgress", {
+    //     tool: repository.name,
+    //     title: `Validating .deployer data...`,
+    //     value: 0
+    //   });
+    // },
     downloadTag(tag, repository) {
       // launch loading screen
       this.$store.dispatch("Deployer/setDeploying", true);
       let release = _.find(this.releases[ownerId(repository)], {
         tag_name: tag
+      });
+      this.$store.dispatch("Deployer/setProgress", {
+        tool: repository.name,
+        title: `Validating .deployer data...`,
+        value: 0
       });
       // fetch deployer data for install and check schema and dependencies
       this.deployerDataExists(repository)
