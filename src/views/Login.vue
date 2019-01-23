@@ -36,11 +36,17 @@ export default {
   },
   mounted() {
     this.enableAutoStart();
+    this.getComputerId();
     process.env.NODE_ENV === "production"
       ? this.checkForUpdates()
       : this.firebaseAuthListener();
   },
   methods: {
+    getComputerId() {
+      createActualPath("$COMPUTERNAME").then(computerId => {
+        this.$store.commit("Deployer/setComputerId", computerId);
+      });
+    },
     checkForUpdates() {
       ipcRenderer.send("check-for-updates", "payload");
       ipcRenderer.on("auto-updater-message", (event, payload) => {

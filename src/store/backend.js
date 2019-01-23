@@ -16,7 +16,7 @@ $backend.interceptors.request.use(config => {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         user.getIdToken(true).then((token) => {
-          // console.log('Token: ', token)
+          console.log('Token: ', token)
           config.headers['Authorization'] = `Bearer ${token}`
           resolve(config)
         })

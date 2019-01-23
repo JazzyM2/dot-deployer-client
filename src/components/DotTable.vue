@@ -27,7 +27,7 @@
               :update="isAnyUpdatePresent(repository)"
               :menu="generateDropdownMenu(repository)"
               :tag="getInstalledTag(repository)"
-              @change-event="downloadTag($event, repository)"
+              @change-event="install($event, repository)"
             ></dropdown>
           </td>
           <td class="action">
@@ -82,7 +82,7 @@ export default {
     },
     getInstalledTag(download) {
       if (this.isInstalled(download)) {
-        return this.installs[this.computerName].installs[download.id].tag;
+        return this.installs[this.computerId].installs[download.id].tag;
       }
     },
     isAnyUpdatePresent(download) {
@@ -138,14 +138,6 @@ export default {
         }
       } else {
         return false;
-      }
-    },
-    downloadUpdate(download) {
-      let identity = ownerId(download);
-      let releases = this.releases[identity];
-      let latestRelease = this.getLatestReleaseTag(releases);
-      if (latestRelease) {
-        this.downloadTag(latestRelease, download);
       }
     },
     launchModal(repository) {
@@ -249,8 +241,15 @@ export default {
     },
     createAssetPayload(repository, asset) {
       let id = asset.id;
+      let fileName = asset.name;
       let identity = ownerName(repository);
-      return { name: asset.name, id: id, repository: identity };
+      return { id: id, fileName: fileName, repository: identity };
+    },
+    createSourcePayload(repository, release) {
+      let id = release.id;
+      let tag = release.tag_name;
+      let identity = ownerName(repository);
+      return { id: id, tag: tag, repository: identity };
     },
     hasDependencies(dependsOn) {
       return new Promise((resolve, reject) => {
@@ -310,63 +309,7 @@ export default {
         }
       });
     },
-    processDownload(deploy, download, release) {
-      return new Promise((resolve, reject) => {
-        if (deploy.assets) {
-          // check that custom assets exist in release
-          let assets = release.assets;
-          if (assets.length === 0 || !assets) {
-            reject(
-              `No assets available in ${download.name} ${release.tag_name}`
-            ); // eslint-disable-line
-          } else {
-            // download all custom assets -- actions for file(s) defined in .deployer
-            let downloads = [];
-            _.forEach(assets, asset => {
-              downloads.push(
-                this.$store.dispatch(
-                  "Deployer/asset",
-                  this.createAssetPayload(download, asset)
-                )
-              );
-            });
-            Promise.all(downloads)
-              .then(() => {
-                resolve(process.env.TEMP);
-              })
-              .catch(error => {
-                reject(error);
-              });
-          }
-        } else {
-          // download zip of source code in tag and extract -- actions for file(s) defined in .deployer
-          this.$store
-            .dispatch("Deployer/download", {
-              url: release.zipball_url,
-              name: download.name
-            })
-            .then(() => {
-              let tempFolder = process.env.TEMP;
-              let tempFilePath = `${tempFolder}\\${download.name}.zip`;
-              let unzipper = new DecompressZip(tempFilePath);
-              unzipper.on("error", error => {
-                reject(error);
-              });
-              unzipper.on("extract", log => {
-                // this folder will be unique, it has commit hash in it
-                let parentFolder = log[0].folder;
-                let parentPath = `${tempFolder}\\${parentFolder}`;
-                resolve(parentPath);
-              });
-              unzipper.extract({ path: tempFolder });
-            })
-            .catch(error => {
-              reject(error);
-            });
-        }
-      });
-    },
-    installOperation(operation, assets, parentPath) {
+    installOperation(operation, parentPath) {
       return new Promise((resolve, reject) => {
         let fileName = operation.source;
         let tempFilePath = `${parentPath}\\${fileName}`;
@@ -411,9 +354,7 @@ export default {
       return new Promise((resolve, reject) => {
         let installProcesses = [];
         _.forEach(deploy.install, operation => {
-          installProcesses.push(
-            this.installOperation(operation, deploy.assets, parentPath)
-          );
+          installProcesses.push(this.installOperation(operation, parentPath));
         });
         Promise.all(installProcesses)
           .then(() => {
@@ -424,19 +365,89 @@ export default {
           });
       });
     },
-    // install(tag, repository) {
-    //   // launch loading screen
-    //   this.$store.dispatch("Deployer/setDeploying", true);
-    //   let release = _.find(this.releases[ownerId(repository)], {
-    //     tag_name: tag
-    //   });
-    //   this.$store.dispatch("Deployer/setProgress", {
-    //     tool: repository.name,
-    //     title: `Validating .deployer data...`,
-    //     value: 0
-    //   });
-    // },
-    downloadTag(tag, repository) {
+    download(repository, release) {
+      return new Promise((resolve, reject) => {
+        const assets = release.assets;
+        if (assets.length > 0) {
+          console.log("Downloading Assets for: ", release);
+          // custom assets exist in release
+          // proceed to download said assets
+          let downloads = [];
+          _.forEach(assets, asset => {
+            downloads.push(
+              this.$store.dispatch(
+                "Deployer/asset",
+                this.createAssetPayload(repository, asset)
+              )
+            );
+          });
+          // when all custom assets are downloaded
+          // resolve parent path for download (in this case temp folder)
+          Promise.all(downloads)
+            .then(() => {
+              createActualPath("$TEMP").then(parentPath => {
+                resolve(parentPath);
+              });
+            })
+            .catch(error => {
+              reject(error);
+            });
+        } else {
+          // download zip of source code in release and extract
+          console.log("Downloading Source Code for: ", release);
+          this.$store
+            .dispatch(
+              "Deployer/download",
+              this.createSourcePayload(repository, release)
+            )
+            .then(path => {
+              let unzipper = new DecompressZip(path);
+              unzipper.on("error", error => {
+                reject(error);
+              });
+              unzipper.on("extract", log => {
+                // this folder will be unique, it has commit hash in it
+                let parentFolder = log[0].folder;
+                let encodedPath = `$TEMP\\${parentFolder}`;
+                createActualPath(encodedPath).then(extractedPath => {
+                  resolve(extractedPath);
+                });
+              });
+              createActualPath("$TEMP").then(tempFolder => {
+                unzipper.extract({ path: tempFolder });
+              });
+            })
+            .catch(error => {
+              reject(error);
+            });
+        }
+      });
+    },
+    install(tag, repository) {
+      // launch loading screen
+      this.$store.dispatch("Deployer/setDeploying", true);
+      let release = _.find(this.releases[ownerId(repository)], {
+        tag_name: tag
+      });
+      this.$store.dispatch("Deployer/setProgress", {
+        tool: repository.name,
+        title: `Downloading Release...`,
+        value: 10
+      });
+      this.download(repository, release)
+        .then(extractedPath => {
+          this.$store.dispatch("Deployer/setProgress", {
+            tool: repository.name,
+            title: `${extractedPath}...`,
+            value: 50
+          });
+          this.handleSuccessfulInstall(repository, tag);
+        })
+        .catch(error => {
+          this.handleInstallError(error);
+        });
+    },
+    oldInstall(tag, repository) {
       // launch loading screen
       this.$store.dispatch("Deployer/setDeploying", true);
       let release = _.find(this.releases[ownerId(repository)], {
@@ -485,7 +496,7 @@ export default {
                                 title: `Downloading files...`,
                                 value: 60
                               });
-                              this.processDownload(deploy, repository, release)
+                              this.download(deploy, repository, release)
                                 .then(parentPath => {
                                   // install files
                                   this.$store.dispatch("Deployer/setProgress", {
@@ -534,7 +545,7 @@ export default {
     },
     isInstalled(download) {
       try {
-        return this.installs[this.computerName].installs[download.id].tag;
+        return this.installs[this.computerId].installs[download.id].tag;
       } catch (error) {
         return false; // eslint-disable-line
       }
@@ -571,18 +582,18 @@ export default {
       let substringArray = asset.split(".");
       return substringArray[substringArray.length - 1];
     },
-    handleSuccessfulInstall(download, tag) {
+    handleSuccessfulInstall(repository, tag) {
       this.$store.dispatch("Deployer/setProgress", {
-        tool: download.name,
+        tool: repository.name,
         title: `Successfully Installed!`,
         value: 100
       });
       this.$store
-        .dispatch("Deployer/updateInstall", { repo: download.name, tag: tag })
+        .dispatch("Deployer/updateInstall", { id: repository.id, tag: tag })
         .then(() => {
           this.stopDeploying();
           this.flashMessage(
-            `Successfully installed: ${download.name} ${tag}`,
+            `Successfully installed: ${repository.name} ${tag}`,
             false
           );
         });
@@ -598,14 +609,23 @@ export default {
     }
   },
   computed: {
-    computerName() {
-      return process.env.COMPUTERNAME;
+    computerId() {
+      return this.$store.state.Deployer.computerId;
     },
     installs() {
       return this.$store.state.Deployer.installs;
     },
     releases() {
       return this.$store.state.Deployer.releases;
+    }
+  },
+  watch: {
+    releases: {
+      handler: () => {
+        console.log("Releases Have Been Updated");
+        this.$forceUpdate();
+      },
+      deep: true
     }
   }
 };

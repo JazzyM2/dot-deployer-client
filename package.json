@@ -29,6 +29,7 @@
     "opn": "^5.4.0",
     "ps-list": "^6.0.0",
     "querystring": "^0.2.0",
+    "request-promise": "^4.2.2",
     "rollbar": "^2.5.1",
     "server-destroy": "^1.0.1",
     "url": "^0.11.0",

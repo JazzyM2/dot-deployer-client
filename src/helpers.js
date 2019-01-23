@@ -34,7 +34,7 @@ const createActualPath = (path) => {
       }
       let environmentVar = variable.substring(1)
       ipcRenderer.send("get-process-env-variable", environmentVar);
-      ipcRenderer.on("environment-variable-found", (event, result) => {
+      ipcRenderer.once("environment-variable-found", (event, result) => {
         resolve(path.replace(variable, result))
       })
     } else {

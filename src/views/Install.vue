@@ -63,9 +63,15 @@ const firebase = require("firebase");
 const { shell } = require("electron");
 
 export default {
-  name: "Manage",
+  name: "Install",
   components: {
     dottable: DotTable
+  },
+  mounted() {
+    // this bit of code allows for hot reload to work when on install tab
+    if (!this.userEmail) {
+      this.$router.push("/");
+    }
   },
   methods: {
     getUrl(type) {

@@ -3,16 +3,18 @@ import firebase from 'firebase'
 
 import {
   ownerId,
-  ownerName
+  ownerName,
+  createActualPath
 } from "../../helpers.js";
 
 const fs = require('fs-extra')
-const request = require('request')
+const requestPromise = require('request-promise')
 const _ = require('lodash')
 
 const baseURL = process.env.VUE_APP_APIURL
 
 const state = {
+  computerId: "",
   supports: ['3.0.0'],
   message: null,
   deploying: false,
@@ -26,6 +28,9 @@ const state = {
 }
 
 const mutations = {
+  setComputerId(state, computerId) {
+    state.computerId = computerId
+  },
   addMessage(state, message) {
     state.message = message
   },
@@ -134,16 +139,17 @@ const actions = {
   },
   updateInstall: (context, payload) => {
     return new Promise((resolve) => {
-      let computerId = process.env.COMPUTERNAME
-      let user = firebase.auth().currentUser.email
-      let update = {}
-      update[payload.repo] = {}
-      update[payload.repo].tag = payload.tag
-      firebase.database().ref(`installs/${computerId}`).update({
-        user: user
-      })
-      firebase.database().ref(`installs/${computerId}/installs`).update(update).then(() => {
-        resolve()
+      createActualPath('$COMPUTERNAME').then(computerId => {
+        let user = firebase.auth().currentUser.email
+        let update = {}
+        update[payload.id] = {}
+        update[payload.id].tag = payload.tag
+        firebase.database().ref(`installs/${computerId}`).update({
+          user: user
+        })
+        firebase.database().ref(`installs/${computerId}/installs`).update(update).then(() => {
+          resolve()
+        })
       })
     })
   },
@@ -211,36 +217,35 @@ const actions = {
   // this action uses a standard request module to get around that
   asset: (context, payload) => {
     return new Promise((resolve, reject) => {
-      const path = `${process.env.TEMP}\\${payload.name}`
-      const url = `${baseURL}asset?id=${payload.id}&repository=${payload.repository}`
-      firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
+      // add asset id to output path to ensure unique filename
+      const encodedPath = `$TEMP\\${payload.id}-${payload.fileName}`
+      createActualPath(encodedPath).then(path => {
+        firebase.auth().onAuthStateChanged((user) => {
           user.getIdToken(true).then((token) => {
-            request({
-              url: url,
-              encoding: null,
+            const options = {
+              method: 'GET',
+              // resolveWithFullResponse: true,
+              uri: `${baseURL}/asset?id=${payload.id}&repository=${payload.repository}`,
+              // encoding: null,
               headers: {
                 Authorization: `Bearer ${token}`
               }
-            }, (error, resp, body) => {
-              if (error) {
-                reject(error)
-              } else {
-                fs.remove(path).then(() => {
-                  fs.outputFile(path, body, (error) => {
-                    if (error) {
-                      reject(error)
-                    } else {
-                      resolve()
-                    }
-                  })
+            }
+            requestPromise(options).then((asset) => {
+              fs.remove(path).then(() => {
+                fs.outputFile(path, asset, (error) => {
+                  if (error) {
+                    reject(error)
+                  } else {
+                    resolve(path)
+                  }
                 })
-              }
+              })
+            }).catch((error) => {
+              reject(error)
             })
           })
-        } else {
-          reject('Please login') // eslint-disable-line
-        }
+        })
       })
     })
   },
@@ -291,34 +296,33 @@ const actions = {
   // },
   download: (context, payload) => {
     return new Promise((resolve, reject) => {
-      const path = `${process.env.TEMP}\\${payload.name}.zip`
-      const url = `${baseURL}download?url=${payload.url}`
-      firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
+      const encodedPath = `$TEMP\\${payload.id}.zip`
+      createActualPath(encodedPath).then(path => {
+        firebase.auth().onAuthStateChanged((user) => {
           user.getIdToken(true).then((token) => {
-            request({
-              url: url,
+            const options = {
+              method: 'GET',
+              uri: `${baseURL}/source?repository=${payload.repository}&tag=${payload.tag}`,
               encoding: null,
               headers: {
                 Authorization: `Bearer ${token}`
               }
-            }, (error, resp, body) => {
-              if (error) {
-                reject(error)
-              } else {
-                fs.outputFile(path, body, (error) => {
+            }
+            requestPromise(options).then((asset) => {
+              fs.remove(path).then(() => {
+                fs.outputFile(path, asset, (error) => {
                   if (error) {
                     reject(error)
                   } else {
-                    resolve()
+                    resolve(path)
                   }
                 })
-              }
+              })
+            }).catch((error) => {
+              reject(error)
             })
           })
-        } else {
-          reject('Please login') // eslint-disable-line
-        }
+        })
       })
     })
   }
