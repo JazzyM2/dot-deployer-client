@@ -52,7 +52,7 @@ export default {
       ipcRenderer.on("auto-updater-message", (event, payload) => {
         this.flashMessage(payload.message, payload.type);
       });
-      ipcRenderer.on("update-not-available", () => {
+      ipcRenderer.once("update-not-available", () => {
         this.firebaseAuthListener();
       });
     },

@@ -76,6 +76,15 @@ ipcMain.on('check-for-updates', (event) => {
     autoUpdater.quitAndInstall();
   });
 
+  const data = {
+    provider: 'github',
+    owner: 'WeConnect',
+    repo: 'dot-deployer-client',
+    token: process.env.GH_TOKEN,
+    private: true
+  };
+
+  autoUpdater.setFeedURL(data)
   autoUpdater.checkForUpdates();
 })
 
