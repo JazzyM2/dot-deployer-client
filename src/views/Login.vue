@@ -36,11 +36,17 @@ export default {
   },
   mounted() {
     this.enableAutoStart();
+    this.getComputerId();
     process.env.NODE_ENV === "production"
       ? this.checkForUpdates()
       : this.firebaseAuthListener();
   },
   methods: {
+    getComputerId() {
+      createActualPath("$COMPUTERNAME").then(computerId => {
+        this.$store.commit("Deployer/setComputerId", computerId);
+      });
+    },
     checkForUpdates() {
       ipcRenderer.send("check-for-updates", "payload");
       ipcRenderer.on("auto-updater-message", (event, payload) => {
@@ -151,9 +157,6 @@ export default {
     },
     signIn() {
       // this.$store.dispatch("Deployer/updateRollbarConfig", user);
-      this.$store.dispatch("Deployer/releaseListener");
-      this.$store.dispatch("Deployer/repositoryListener");
-
       let fetchGitHub = this.$store.dispatch(
         "Deployer/fetchRepositoriesAndReleases"
       );
@@ -169,6 +172,10 @@ export default {
         db: "repositories",
         store: "setMetadata"
       });
+      // set listeners for github events that can take place via github application
+      this.$store.dispatch("Deployer/releaseListener");
+      this.$store.dispatch("Deployer/repositoryListener");
+      // wait for all promises to resolve and continue signin process
       Promise.all([users, installs, metadata, fetchGitHub]).then(
         () => this.handleSignInSuccess(),
         error => this.handleSignInFailure(error)
@@ -177,12 +184,7 @@ export default {
     handleSignInFailure(error) {
       firebase.auth().signOut();
       this.authenticating = false;
-      let message = "";
-      try {
-        message = error.response.data.message;
-      } catch (err) {
-        message = error;
-      }
+      let message = error.message;
       this.flashMessage(message, "is-danger");
     },
     handleSignInSuccess() {

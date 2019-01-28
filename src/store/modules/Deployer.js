@@ -3,16 +3,15 @@ import firebase from 'firebase'
 
 import {
   ownerId,
-  ownerName
+  ownerName,
+  createActualPath
 } from "../../helpers.js";
 
-const fs = require('fs-extra')
-const request = require('request')
 const _ = require('lodash')
-
-const baseURL = process.env.VUE_APP_APIURL
+const fs = require('fs-extra')
 
 const state = {
+  computerId: "",
   supports: ['3.0.0'],
   message: null,
   deploying: false,
@@ -26,6 +25,9 @@ const state = {
 }
 
 const mutations = {
+  setComputerId(state, computerId) {
+    state.computerId = computerId
+  },
   addMessage(state, message) {
     state.message = message
   },
@@ -134,16 +136,17 @@ const actions = {
   },
   updateInstall: (context, payload) => {
     return new Promise((resolve) => {
-      let computerId = process.env.COMPUTERNAME
-      let user = firebase.auth().currentUser.email
-      let update = {}
-      update[payload.repo] = {}
-      update[payload.repo].tag = payload.tag
-      firebase.database().ref(`installs/${computerId}`).update({
-        user: user
-      })
-      firebase.database().ref(`installs/${computerId}/installs`).update(update).then(() => {
-        resolve()
+      createActualPath('$COMPUTERNAME').then(computerId => {
+        let user = firebase.auth().currentUser.email
+        let update = {}
+        update[payload.id] = {}
+        update[payload.id].tag = payload.tag
+        firebase.database().ref(`installs/${computerId}`).update({
+          user: user
+        })
+        firebase.database().ref(`installs/${computerId}/installs`).update(update).then(() => {
+          resolve()
+        })
       })
     })
   },
@@ -154,30 +157,6 @@ const actions = {
       resolve()
     })
   },
-  // addAdmin: (context, email) => {
-  //   firebase.database().ref('admins').push({
-  //     email: email
-  //   })
-  // },
-  // deleteAdmin: (context, key) => {
-  //   firebase.database().ref('admins/' + key).remove()
-  // },
-  // addRepo: (context, repo) => {
-  //   return new Promise((resolve) => {
-  //     let payload = _.cloneDeep(repo)
-  //     payload.added_by = {}
-  //     payload.added_by.email = firebase.auth().currentUser.email
-  //     payload.added_by.photo = firebase.auth().currentUser.photoURL
-  //     firebase.database().ref('repositories').push(payload)
-  //     resolve()
-  //   })
-  // },
-  // deleteRepo: (context, key) => {
-  //   return new Promise((resolve) => {
-  //     firebase.database().ref('repositories/' + key).remove()
-  //     resolve()
-  //   })
-  // },
   repositories: (context) => {
     return new Promise((resolve, reject) => {
       backend.getRepositories().then(
@@ -207,43 +186,53 @@ const actions = {
       )
     })
   },
-  // axios backend forces encoding on a binary response
-  // this action uses a standard request module to get around that
   asset: (context, payload) => {
     return new Promise((resolve, reject) => {
-      const path = `${process.env.TEMP}\\${payload.name}`
-      const url = `${baseURL}asset?id=${payload.id}&repository=${payload.repository}`
-      firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-          user.getIdToken(true).then((token) => {
-            request({
-              url: url,
-              encoding: null,
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            }, (error, resp, body) => {
-              if (error) {
-                reject(error)
+      backend.getAsset(payload.repository, payload.id).then(asset => {
+        const encodedPath = `$TEMP\\${payload.id}-${payload.fileName}`
+        createActualPath(encodedPath).then(path => {
+          fs.remove(path).then(() => {
+            fs.outputFile(path, asset, (outputError) => {
+              if (outputError) {
+                reject(outputError)
               } else {
-                fs.remove(path).then(() => {
-                  fs.outputFile(path, body, (error) => {
-                    if (error) {
-                      reject(error)
-                    } else {
-                      resolve()
-                    }
-                  })
-                })
+                resolve(path)
               }
             })
+          }).catch((error) => {
+            reject(error)
           })
-        } else {
-          reject('Please login') // eslint-disable-line
-        }
+        }).catch((error) => {
+          reject(error)
+        })
+      }).catch((error) => {
+        reject(error)
       })
     })
   },
+  download: (context, payload) => {
+    return new Promise((resolve, reject) => {
+      backend.getSource(payload.repository, payload.tag).then(download => {
+        const fileName = `${payload.id}-${payload.repository.split('/')[1]}`
+        const encodedPath = `$TEMP\\${fileName}.zip`
+        createActualPath(encodedPath).then(path => {
+          fs.remove(path).then(() => {
+            fs.outputFile(path, download, (outputError) => {
+              if (outputError) {
+                reject(outputError)
+              } else {
+                resolve(path)
+              }
+            })
+          }).catch((error) => {
+            reject(error)
+          })
+        }).catch((error) => {
+          reject(error)
+        })
+      })
+    })
+  }
   // getFileJSON: (context, payload) => {
   //   return new Promise((resolve, reject) => {
   //     const path = `${process.env.TEMP}\\${payload.name}.json`
@@ -289,39 +278,30 @@ const actions = {
   //     })
   //   })
   // },
-  download: (context, payload) => {
-    return new Promise((resolve, reject) => {
-      const path = `${process.env.TEMP}\\${payload.name}.zip`
-      const url = `${baseURL}download?url=${payload.url}`
-      firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-          user.getIdToken(true).then((token) => {
-            request({
-              url: url,
-              encoding: null,
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            }, (error, resp, body) => {
-              if (error) {
-                reject(error)
-              } else {
-                fs.outputFile(path, body, (error) => {
-                  if (error) {
-                    reject(error)
-                  } else {
-                    resolve()
-                  }
-                })
-              }
-            })
-          })
-        } else {
-          reject('Please login') // eslint-disable-line
-        }
-      })
-    })
-  }
+  // addAdmin: (context, email) => {
+  //   firebase.database().ref('admins').push({
+  //     email: email
+  //   })
+  // },
+  // deleteAdmin: (context, key) => {
+  //   firebase.database().ref('admins/' + key).remove()
+  // },
+  // addRepo: (context, repo) => {
+  //   return new Promise((resolve) => {
+  //     let payload = _.cloneDeep(repo)
+  //     payload.added_by = {}
+  //     payload.added_by.email = firebase.auth().currentUser.email
+  //     payload.added_by.photo = firebase.auth().currentUser.photoURL
+  //     firebase.database().ref('repositories').push(payload)
+  //     resolve()
+  //   })
+  // },
+  // deleteRepo: (context, key) => {
+  //   return new Promise((resolve) => {
+  //     firebase.database().ref('repositories/' + key).remove()
+  //     resolve()
+  //   })
+  // },
 }
 
 export default {

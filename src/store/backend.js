@@ -1,37 +1,50 @@
 import axios from 'axios'
-const firebase = require('firebase')
+import GitHub from './github.js'
+const requestPromise = require('request-promise')
 
-// creates an axios backend for API calls
-let $backend = axios.create({
+// creates an ios backend for cloud functions
+let $cloudFunctions = axios.create({
   baseURL: process.env.VUE_APP_APIURL,
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json'
+    Accept: 'application/json'
   }
 })
 
-// backend request wrapper to add firebase id token to auth header
-$backend.interceptors.request.use(config => {
+// creates an axios backend for github api calls
+let $github = axios.create({
+  baseURL: 'https://api.github.com',
+  timeout: 30000,
+  headers: {
+    Accept: 'application/vnd.github.machine-man-preview+json'
+  }
+})
+
+// request wrapper to add github token to auth header
+$github.interceptors.request.use(config => {
   return new Promise((resolve, reject) => {
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        user.getIdToken(true).then((token) => {
-          // console.log('Token: ', token)
-          config.headers['Authorization'] = `Bearer ${token}`
-          resolve(config)
-        })
-      } else {
-        reject('Please Login') // eslint-disable-line
-      }
+    GitHub.requestToken().then((token) => {
+      config.headers['Authorization'] = `token ${token}`
+      resolve(config)
+    }).catch((error) => {
+      reject(error)
     })
   })
 })
 
-// backend functions to be exported
+// export backend functions for use in store module
 export default {
+  validate(deployerData) {
+    return new Promise((resolve, reject) => {
+      $cloudFunctions.post(`validate`, deployerData).then(
+        response => resolve(response.data),
+        error => reject(error)
+      )
+    })
+  },
   getRepositories() {
     return new Promise((resolve, reject) => {
-      $backend.get('repositories').then(
+      $github.get('installation/repositories').then(
         response => resolve(response.data),
         error => reject(error)
       )
@@ -39,18 +52,52 @@ export default {
   },
   getReleases(repoName) {
     return new Promise((resolve, reject) => {
-      $backend.get(`releases?repository=${repoName}`).then(
+      $github.get(`repos/${repoName}/releases`).then(
         response => resolve(response.data),
         error => reject(error)
       )
     })
   },
-  validate(deployerData) {
+  getAsset(repoName, assetId) {
+    // using standard rquest library to avoid limitations with axios
     return new Promise((resolve, reject) => {
-      $backend.post(`validate`, deployerData).then(
-        response => resolve(response.data),
-        error => reject(error)
-      )
+      GitHub.requestToken().then((token) => {
+        const options = {
+          url: `https://api.github.com/repos/${repoName}/releases/assets/${assetId}`,
+          encoding: null,
+          headers: {
+            Authorization: `token ${token}`,
+            Accept: 'application/octet-stream',
+            'User-Agent': 'Dot Deployer'
+          }
+        }
+        requestPromise(options).then(asset => {
+          resolve(asset)
+        }).catch((error) => {
+          reject(error)
+        })
+      })
+    })
+  },
+  getSource(repoName, tagName) {
+    // using standard rquest library to avoid limitations with axios
+    return new Promise((resolve, reject) => {
+      GitHub.requestToken().then((token) => {
+        const options = {
+          url: `https://api.github.com/repos/${repoName}/zipball/${tagName}`,
+          encoding: null,
+          headers: {
+            Authorization: `token ${token}`,
+            Accept: 'application/vnd.github.machine-man-preview+json',
+            'User-Agent': 'Dot Deployer'
+          }
+        }
+        requestPromise(options).then(source => {
+          resolve(source)
+        }).catch((error) => {
+          reject(error)
+        })
+      })
     })
   }
 }
