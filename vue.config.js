@@ -7,8 +7,7 @@ module.exports = {
         publish: [{
           provider: "github",
           owner: "WeConnect",
-          repo: "dot-deployer-client",
-          private: true
+          repo: "dot-deployer-client"
         }],
         productName: "Dot Deployer",
         nsis: {
