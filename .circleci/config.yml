@@ -73,7 +73,7 @@ jobs:
             go get github.com/tcnksm/ghr
             echo 'export TAG=$(more ./dist_electron/version.txt)' >> $BASH_ENV
             source $BASH_ENV
-            ghr -n "bumping version for autoupdate check" -b "self explanatory" -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${TAG} ./dist_electron
+            ghr -n "Building With New API" -b "Also changing the repository to private and testing!" -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${TAG} ./dist_electron
 
 workflows:
   version: 2
