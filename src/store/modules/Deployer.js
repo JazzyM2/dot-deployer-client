@@ -7,11 +7,8 @@ import {
   createActualPath
 } from "../../helpers.js";
 
-const fs = require('fs-extra')
-const requestPromise = require('request-promise')
 const _ = require('lodash')
-
-const baseURL = process.env.VUE_APP_APIURL
+const fs = require('fs-extra')
 
 const state = {
   computerId: "",
@@ -160,30 +157,6 @@ const actions = {
       resolve()
     })
   },
-  // addAdmin: (context, email) => {
-  //   firebase.database().ref('admins').push({
-  //     email: email
-  //   })
-  // },
-  // deleteAdmin: (context, key) => {
-  //   firebase.database().ref('admins/' + key).remove()
-  // },
-  // addRepo: (context, repo) => {
-  //   return new Promise((resolve) => {
-  //     let payload = _.cloneDeep(repo)
-  //     payload.added_by = {}
-  //     payload.added_by.email = firebase.auth().currentUser.email
-  //     payload.added_by.photo = firebase.auth().currentUser.photoURL
-  //     firebase.database().ref('repositories').push(payload)
-  //     resolve()
-  //   })
-  // },
-  // deleteRepo: (context, key) => {
-  //   return new Promise((resolve) => {
-  //     firebase.database().ref('repositories/' + key).remove()
-  //     resolve()
-  //   })
-  // },
   repositories: (context) => {
     return new Promise((resolve, reject) => {
       backend.getRepositories().then(
@@ -213,42 +186,53 @@ const actions = {
       )
     })
   },
-  // axios backend forces encoding on a binary response
-  // this action uses a standard request module to get around that
   asset: (context, payload) => {
     return new Promise((resolve, reject) => {
-      // add asset id to output path to ensure unique filename
-      const encodedPath = `$TEMP\\${payload.id}-${payload.fileName}`
-      createActualPath(encodedPath).then(path => {
-        firebase.auth().onAuthStateChanged((user) => {
-          user.getIdToken(true).then((token) => {
-            const options = {
-              method: 'GET',
-              // resolveWithFullResponse: true,
-              uri: `${baseURL}/asset?id=${payload.id}&repository=${payload.repository}`,
-              // encoding: null,
-              headers: {
-                Authorization: `Bearer ${token}`
+      backend.getAsset(payload.repository, payload.id).then(asset => {
+        const encodedPath = `$TEMP\\${payload.id}-${payload.fileName}`
+        createActualPath(encodedPath).then(path => {
+          fs.remove(path).then(() => {
+            fs.outputFile(path, asset, (outputError) => {
+              if (outputError) {
+                reject(outputError)
+              } else {
+                resolve(path)
               }
-            }
-            requestPromise(options).then((asset) => {
-              fs.remove(path).then(() => {
-                fs.outputFile(path, asset, (error) => {
-                  if (error) {
-                    reject(error)
-                  } else {
-                    resolve(path)
-                  }
-                })
-              })
-            }).catch((error) => {
-              reject(error)
             })
+          }).catch((error) => {
+            reject(error)
           })
+        }).catch((error) => {
+          reject(error)
         })
+      }).catch((error) => {
+        reject(error)
       })
     })
   },
+  download: (context, payload) => {
+    return new Promise((resolve, reject) => {
+      backend.getSource(payload.repository, payload.tag).then(download => {
+        const fileName = `${payload.id}-${payload.repository.split('/')[1]}`
+        const encodedPath = `$TEMP\\${fileName}.zip`
+        createActualPath(encodedPath).then(path => {
+          fs.remove(path).then(() => {
+            fs.outputFile(path, download, (outputError) => {
+              if (outputError) {
+                reject(outputError)
+              } else {
+                resolve(path)
+              }
+            })
+          }).catch((error) => {
+            reject(error)
+          })
+        }).catch((error) => {
+          reject(error)
+        })
+      })
+    })
+  }
   // getFileJSON: (context, payload) => {
   //   return new Promise((resolve, reject) => {
   //     const path = `${process.env.TEMP}\\${payload.name}.json`
@@ -294,38 +278,30 @@ const actions = {
   //     })
   //   })
   // },
-  download: (context, payload) => {
-    return new Promise((resolve, reject) => {
-      const encodedPath = `$TEMP\\${payload.id}.zip`
-      createActualPath(encodedPath).then(path => {
-        firebase.auth().onAuthStateChanged((user) => {
-          user.getIdToken(true).then((token) => {
-            const options = {
-              method: 'GET',
-              uri: `${baseURL}/source?repository=${payload.repository}&tag=${payload.tag}`,
-              encoding: null,
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            }
-            requestPromise(options).then((asset) => {
-              fs.remove(path).then(() => {
-                fs.outputFile(path, asset, (error) => {
-                  if (error) {
-                    reject(error)
-                  } else {
-                    resolve(path)
-                  }
-                })
-              })
-            }).catch((error) => {
-              reject(error)
-            })
-          })
-        })
-      })
-    })
-  }
+  // addAdmin: (context, email) => {
+  //   firebase.database().ref('admins').push({
+  //     email: email
+  //   })
+  // },
+  // deleteAdmin: (context, key) => {
+  //   firebase.database().ref('admins/' + key).remove()
+  // },
+  // addRepo: (context, repo) => {
+  //   return new Promise((resolve) => {
+  //     let payload = _.cloneDeep(repo)
+  //     payload.added_by = {}
+  //     payload.added_by.email = firebase.auth().currentUser.email
+  //     payload.added_by.photo = firebase.auth().currentUser.photoURL
+  //     firebase.database().ref('repositories').push(payload)
+  //     resolve()
+  //   })
+  // },
+  // deleteRepo: (context, key) => {
+  //   return new Promise((resolve) => {
+  //     firebase.database().ref('repositories/' + key).remove()
+  //     resolve()
+  //   })
+  // },
 }
 
 export default {

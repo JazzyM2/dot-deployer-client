@@ -224,7 +224,7 @@ export default {
                     });
                 })
                 .catch(error => {
-                  this.handleAPIError(error);
+                  this.handleInstallError(error);
                 });
             })
             .catch(error => {
@@ -401,20 +401,28 @@ export default {
               this.createSourcePayload(repository, release)
             )
             .then(path => {
-              let unzipper = new DecompressZip(path);
+              const unzipper = new DecompressZip(path);
+              console.log(unzipper);
               unzipper.on("error", error => {
                 reject(error);
               });
               unzipper.on("extract", log => {
-                // this folder will be unique, it has commit hash in it
-                let parentFolder = log[0].folder;
-                let encodedPath = `$TEMP\\${parentFolder}`;
-                createActualPath(encodedPath).then(extractedPath => {
-                  resolve(extractedPath);
-                });
+                // remove original .zip file from temp folder
+                fs.remove(path)
+                  .then(() => {
+                    // this folder will be unique, it has commit hash in it
+                    let parentFolder = log[0].folder;
+                    let encodedPath = `$TEMP\\${parentFolder}`;
+                    createActualPath(encodedPath).then(extractedPath => {
+                      resolve(extractedPath);
+                    });
+                  })
+                  .catch(error => {
+                    reject(error);
+                  });
               });
-              createActualPath("$TEMP").then(tempFolder => {
-                unzipper.extract({ path: tempFolder });
+              createActualPath("$TEMP").then(tempPath => {
+                unzipper.extract({ path: tempPath });
               });
             })
             .catch(error => {
@@ -528,7 +536,7 @@ export default {
                         });
                     })
                     .catch(error => {
-                      this.handleAPIError(error);
+                      this.handleInstallError(error);
                     });
                 })
                 .catch(error => {
@@ -573,9 +581,13 @@ export default {
       return menu;
     },
     flashMessage(message, error) {
-      this.$store.dispatch("Deployer/flashMessage", {
+      let type;
+      error == true ? (type = "is-danger") : (type = "is-success");
+      this.$toast.open({
         message: message,
-        error: error
+        position: "is-bottom",
+        type: type,
+        duration: 2500
       });
     },
     getExtension(asset) {
@@ -598,14 +610,10 @@ export default {
           );
         });
     },
-    handleAPIError(error) {
-      this.stopDeploying();
-      this.flashMessage(error.response.data.message, true);
-    },
     handleInstallError(error) {
       console.log(error);
       this.stopDeploying();
-      this.flashMessage(error, true);
+      this.flashMessage(error.message, true);
     }
   },
   computed: {
@@ -621,7 +629,7 @@ export default {
   },
   watch: {
     releases: {
-      handler: () => {
+      handler() {
         console.log("Releases Have Been Updated");
         this.$forceUpdate();
       },

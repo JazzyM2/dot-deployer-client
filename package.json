@@ -19,16 +19,19 @@
     "buefy": "^0.7.1",
     "bulma": "^0.7.2",
     "child_process": "^1.0.2",
-    "decompress-zip": "^0.3.1",
+    "decompress-zip": "^0.2.2",
     "electron-updater": "4.0.6",
     "firebase": "^5.7.0",
     "fs-extra": "^7.0.1",
     "googleapis": "^36.0.0",
     "http": "^0.0.0",
+    "js-base64": "^2.5.1",
+    "jsonwebtoken": "^8.4.0",
     "lodash": "^4.17.11",
     "opn": "^5.4.0",
     "ps-list": "^6.0.0",
     "querystring": "^0.2.0",
+    "request": "^2.88.0",
     "request-promise": "^4.2.2",
     "rollbar": "^2.5.1",
     "server-destroy": "^1.0.1",
@@ -54,6 +57,9 @@
     "sass-loader": "^7.1.0",
     "vue-cli-plugin-electron-builder": "^1.0.0-rc.9",
     "vue-template-compiler": "^2.5.17"
+  },
+  "gitHooks": {
+    "pre-commit": "lint-staged"
   },
   "lint-staged": {
     "*.js": [
