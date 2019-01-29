@@ -2,15 +2,6 @@ import axios from 'axios'
 import GitHub from './github.js'
 const requestPromise = require('request-promise')
 
-// creates an ios backend for cloud functions
-let $cloudFunctions = axios.create({
-  baseURL: process.env.VUE_APP_APIURL,
-  timeout: 30000,
-  headers: {
-    Accept: 'application/json'
-  }
-})
-
 // creates an axios backend for github api calls
 let $github = axios.create({
   baseURL: 'https://api.github.com',
@@ -36,10 +27,17 @@ $github.interceptors.request.use(config => {
 export default {
   validate(deployerData) {
     return new Promise((resolve, reject) => {
-      $cloudFunctions.post(`validate`, deployerData).then(
-        response => resolve(response.data),
-        error => reject(error)
-      )
+      const options = {
+        method: "POST",
+        url: `${process.env.VUE_APP_APIURL}/validate`,
+        json: true,
+        body: deployerData
+      }
+      requestPromise(options).then(() => {
+        resolve()
+      }).catch((error) => {
+        reject(error)
+      })
     })
   },
   getRepositories() {
