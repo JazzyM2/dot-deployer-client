@@ -9,11 +9,11 @@ import {
 
 const _ = require('lodash')
 const fs = require('fs-extra')
+const DecompressZip = require("decompress-zip");
 
 const state = {
   computerId: "",
   supports: ['3.0.0'],
-  message: null,
   deploying: false,
   progress: null,
   modalActive: false,
@@ -28,9 +28,6 @@ const mutations = {
   setComputerId(state, computerId) {
     state.computerId = computerId
   },
-  addMessage(state, message) {
-    state.message = message
-  },
   setDeploying(state, bool) {
     state.deploying = bool
   },
@@ -39,9 +36,6 @@ const mutations = {
   },
   setModalActive(state, bool) {
     state.modalActive = bool
-  },
-  popMessage(state) {
-    state.message = null
   },
   setRepositories(state, repositories) {
     state.repositories = repositories
@@ -81,12 +75,6 @@ const actions = {
   },
   setModalActive: (context, bool) => {
     return context.commit('setModalActive', bool)
-  },
-  flashMessage: (context, message) => {
-    context.commit('addMessage', message)
-    setTimeout(function () {
-      context.commit('popMessage')
-    }, 3000)
   },
   fireListener: (context, ref) => {
     return new Promise((resolve, reject) => {
@@ -131,6 +119,7 @@ const actions = {
     return firebase.database().ref('release').on('child_removed', (snapshot) => {
       const snapshotData = snapshot.val()
       let repository = snapshotData.repository
+      console.log('Relase Listener Triggered...', snapshotData)
       context.dispatch('releases', repository)
     });
   },
@@ -152,7 +141,7 @@ const actions = {
   },
   removeInstall: (context, repo) => {
     return new Promise((resolve) => {
-      let computerId = process.env.COMPUTERNAME
+      let computerId = context.state.computerId
       firebase.database().ref(`installs/${computerId}/installs/${repo}`).remove()
       resolve()
     })
@@ -188,15 +177,16 @@ const actions = {
   },
   asset: (context, payload) => {
     return new Promise((resolve, reject) => {
-      backend.getAsset(payload.repository, payload.id).then(asset => {
-        const encodedPath = `$TEMP\\${payload.id}-${payload.fileName}`
-        createActualPath(encodedPath).then(path => {
-          fs.remove(path).then(() => {
-            fs.outputFile(path, asset, (outputError) => {
+      backend.getAsset(payload.repository, payload.assetId).then(asset => {
+        const encodedPath = `$TEMP\\${payload.repository.replace('/', '-')}-${payload.releaseId}`
+        createActualPath(encodedPath).then(parentPath => {
+          let filePath = `${parentPath}\\${payload.fileName}`
+          fs.remove(filePath).then(() => {
+            fs.outputFile(filePath, asset, (outputError) => {
               if (outputError) {
                 reject(outputError)
               } else {
-                resolve(path)
+                resolve(parentPath)
               }
             })
           }).catch((error) => {
@@ -213,19 +203,37 @@ const actions = {
   download: (context, payload) => {
     return new Promise((resolve, reject) => {
       backend.getSource(payload.repository, payload.tag).then(download => {
-        const fileName = `${payload.id}-${payload.repository.split('/')[1]}`
-        const encodedPath = `$TEMP\\${fileName}.zip`
+        const encodedPath = `$TEMP\\${payload.id}.zip`
         createActualPath(encodedPath).then(path => {
-          fs.remove(path).then(() => {
-            fs.outputFile(path, download, (outputError) => {
-              if (outputError) {
-                reject(outputError)
-              } else {
-                resolve(path)
-              }
-            })
-          }).catch((error) => {
-            reject(error)
+          fs.outputFile(path, download, (outputError) => {
+            if (outputError) {
+              reject(outputError)
+            } else {
+              const unzipper = new DecompressZip(path);
+              unzipper.on("error", error => {
+                reject(error);
+              });
+              unzipper.on("extract", log => {
+                // remove original .zip file from temp folder
+                fs.remove(path)
+                  .then(() => {
+                    // this folder will be unique, it has commit hash in it
+                    let parentFolder = log[0].folder;
+                    let encodedPath = `$TEMP\\${parentFolder}`;
+                    createActualPath(encodedPath).then(extractedPath => {
+                      resolve(extractedPath);
+                    });
+                  })
+                  .catch(error => {
+                    reject(error);
+                  });
+              });
+              createActualPath("$TEMP").then(tempPath => {
+                unzipper.extract({
+                  path: tempPath
+                });
+              });
+            }
           })
         }).catch((error) => {
           reject(error)
@@ -233,51 +241,6 @@ const actions = {
       })
     })
   }
-  // getFileJSON: (context, payload) => {
-  //   return new Promise((resolve, reject) => {
-  //     const path = `${process.env.TEMP}\\${payload.name}.json`
-  //     const url = `${baseURL}file?path=${payload.path}&repository=${payload.helpers.ownerName}`
-  //     firebase.auth().onAuthStateChanged((user) => {
-  //       if (user) {
-  //         user.getIdToken(true).then((token) => {
-  //           request({
-  //             url: url,
-  //             encoding: null,
-  //             headers: {
-  //               Authorization: `Bearer ${token}`
-  //             }
-  //           }, (error, resp, body) => {
-  //             if (error) {
-  //               reject(error)
-  //             } else {
-  //               // create the .deployer file for chosen repository
-  //               fs.outputFile(path, body).then(() => {
-  //                 // read file to create / verify json!
-  //                 fs.readJson(path).then((deployerData) => {
-  //                   context.commit('setDeployers', {
-  //                     name: payload.helpers.ownerId,
-  //                     deployer: deployerData
-  //                   })
-  //                   resolve()
-  //                 }).catch(() => {
-  //                   context.commit('setDeployers', {
-  //                     name: payload.helpers.ownerId,
-  //                     deployer: null
-  //                   })
-  //                   resolve()
-  //                 })
-  //               }).catch(() => {
-  //                 reject(`Failed to write file to ${payload.path}`) // eslint-disable-line
-  //               })
-  //             }
-  //           })
-  //         })
-  //       } else {
-  //         reject('Please login') // eslint-disable-line
-  //       }
-  //     })
-  //   })
-  // },
   // addAdmin: (context, email) => {
   //   firebase.database().ref('admins').push({
   //     email: email

@@ -25,15 +25,15 @@
               class="dropdown"
               title="Install"
               :update="isAnyUpdatePresent(repository)"
-              :menu="generateDropdownMenu(repository)"
+              :repository="repository"
               :tag="getInstalledTag(repository)"
-              @change-event="install($event, repository)"
+              @change-event="downloadAndProcess($event, repository, true)"
             ></dropdown>
           </td>
           <td class="action">
             <button
               v-if="isInstalled(repository)"
-              @click="uninstall(repository)"
+              @click="downloadAndProcess(getInstalledTag(repository), repository, false)"
               class="animated uninstall fadeIn button is-outlined is-rounded is-small is-info"
             >Uninstall</button>
           </td>
@@ -174,76 +174,21 @@ export default {
         return null;
       }
     },
-    uninstall(download) {
-      this.$store.dispatch("Deployer/setDeploying", true);
-      this.deployerDataExists(download)
-        .then(deploy => {
-          this.supportsSchema(deploy.version)
-            .then(() => {
-              // validate deployer data
-              this.$store.dispatch("Deployer/setProgress", {
-                tool: download.name,
-                title: `Validating .deployer data...`,
-                value: 0
-              });
-              this.$store
-                .dispatch("Deployer/validate", deploy)
-                .then(() => {
-                  // check for open processes
-                  this.$store.dispatch("Deployer/setProgress", {
-                    tool: download.name,
-                    title: `Checking for open processes...`,
-                    value: 33
-                  });
-                  this.checkForProcessesOpen(deploy.processes)
-                    .then(() => {
-                      // uninstall current install
-                      this.$store.dispatch("Deployer/setProgress", {
-                        tool: download.name,
-                        title: `Uninstalling current files...`,
-                        value: 66
-                      });
-                      this.processUninstall(deploy.uninstall)
-                        .then(() => {
-                          this.$store
-                            .dispatch("Deployer/removeInstall", download.name)
-                            .then(() => {
-                              this.stopDeploying();
-                              this.flashMessage(
-                                `Successfully Uninstalled ${download.name}`,
-                                false
-                              );
-                            });
-                        })
-                        .catch(error => {
-                          this.handleInstallError(error);
-                        });
-                    })
-                    .catch(error => {
-                      this.handleInstallError(error);
-                    });
-                })
-                .catch(error => {
-                  this.handleInstallError(error);
-                });
-            })
-            .catch(error => {
-              this.handleInstallError(error);
-            });
-        })
-        .catch(error => {
-          this.handleInstallError(error);
-        });
-    },
     stopDeploying() {
       this.$store.dispatch("Deployer/setDeploying", false);
       this.$store.dispatch("Deployer/setProgress", null);
     },
-    createAssetPayload(repository, asset) {
-      let id = asset.id;
+    createAssetPayload(repository, release, asset) {
+      let assetId = asset.id;
+      let releaseId = release.id;
       let fileName = asset.name;
       let identity = ownerName(repository);
-      return { id: id, fileName: fileName, repository: identity };
+      return {
+        releaseId: releaseId,
+        assetId: assetId,
+        fileName: fileName,
+        repository: identity
+      };
     },
     createSourcePayload(repository, release) {
       let id = release.id;
@@ -279,33 +224,21 @@ export default {
         resolve();
       });
     },
-    deployerDataExists() {
-      // checks if .deployer data exists and is valid JSON
-      return new Promise(resolve => {
-        resolve(true);
-      });
-    },
     processUninstall(uninstall) {
-      return new Promise((resolve, reject) => {
+      return new Promise(resolve => {
         if (!uninstall) {
           resolve();
         } else {
-          let uninstallers = [];
           _.forEach(uninstall, operation => {
-            let path = createActualPath(operation.source);
-            if (operation.action === "run") {
-              shell.openItem(path);
-            } else if (operation.action === "delete") {
-              uninstallers.push(fs.remove(path));
-            }
-          });
-          Promise.all(uninstallers)
-            .then(() => {
-              resolve();
-            })
-            .catch(error => {
-              reject(error);
+            createActualPath(operation.source).then(path => {
+              if (operation.action === "run") {
+                shell.openItem(path);
+              } else if (operation.action === "delete") {
+                fs.removeSync(path);
+              }
             });
+          });
+          resolve();
         }
       });
     },
@@ -314,36 +247,38 @@ export default {
         let fileName = operation.source;
         let tempFilePath = `${parentPath}\\${fileName}`;
         if (operation.action === "copy") {
-          let destination = createActualPath(operation.destination);
-          let destFilePath = `${destination}\\${fileName}`;
-          // copy file to destination
-          fs.copy(tempFilePath, destFilePath)
-            .then(() => {
-              let extension = this.getExtension(fileName);
-              if (
-                extension === "zip" ||
-                extension === "tar" ||
-                extension === "gz"
-              ) {
-                // initiate unzipper event listeners
-                const unzipper = new DecompressZip(destFilePath);
-                unzipper.on("error", error => {
-                  reject(error);
-                });
-                unzipper.on("extract", () => {
-                  fs.remove(destFilePath).then(() => {
-                    resolve();
+          createActualPath(operation.destination).then(decodedPath => {
+            let destFilePath = `${decodedPath}\\${fileName}`;
+            // copy file to destination
+            console.log(`copying from ${tempFilePath} to ${destFilePath}`);
+            fs.move(tempFilePath, destFilePath)
+              .then(() => {
+                let extension = this.getExtension(fileName);
+                if (
+                  extension === "zip" ||
+                  extension === "tar" ||
+                  extension === "gz"
+                ) {
+                  // initiate unzipper event listeners
+                  const unzipper = new DecompressZip(destFilePath);
+                  unzipper.on("error", error => {
+                    reject(error);
                   });
-                });
-                // extract contents
-                unzipper.extract({ path: `${destination}` });
-              } else {
-                resolve();
-              }
-            })
-            .catch(error => {
-              reject(error);
-            });
+                  unzipper.on("extract", () => {
+                    fs.remove(destFilePath).then(() => {
+                      resolve();
+                    });
+                  });
+                  // extract contents
+                  unzipper.extract({ path: `${parentPath}` });
+                } else {
+                  resolve();
+                }
+              })
+              .catch(error => {
+                reject(error);
+              });
+          });
         } else if (operation.action === "run") {
           shell.openItem(tempFilePath);
           resolve();
@@ -369,61 +304,32 @@ export default {
       return new Promise((resolve, reject) => {
         const assets = release.assets;
         if (assets.length > 0) {
-          console.log("Downloading Assets for: ", release);
-          // custom assets exist in release
-          // proceed to download said assets
+          // download all custom assets in a release
           let downloads = [];
           _.forEach(assets, asset => {
             downloads.push(
               this.$store.dispatch(
                 "Deployer/asset",
-                this.createAssetPayload(repository, asset)
+                this.createAssetPayload(repository, release, asset)
               )
             );
           });
-          // when all custom assets are downloaded
-          // resolve parent path for download (in this case temp folder)
           Promise.all(downloads)
-            .then(() => {
-              createActualPath("$TEMP").then(parentPath => {
-                resolve(parentPath);
-              });
+            .then(paths => {
+              resolve(paths[0]);
             })
             .catch(error => {
               reject(error);
             });
         } else {
-          // download zip of source code in release and extract
-          console.log("Downloading Source Code for: ", release);
+          // download source code of a release
           this.$store
             .dispatch(
               "Deployer/download",
               this.createSourcePayload(repository, release)
             )
             .then(path => {
-              const unzipper = new DecompressZip(path);
-              console.log(unzipper);
-              unzipper.on("error", error => {
-                reject(error);
-              });
-              unzipper.on("extract", log => {
-                // remove original .zip file from temp folder
-                fs.remove(path)
-                  .then(() => {
-                    // this folder will be unique, it has commit hash in it
-                    let parentFolder = log[0].folder;
-                    let encodedPath = `$TEMP\\${parentFolder}`;
-                    createActualPath(encodedPath).then(extractedPath => {
-                      resolve(extractedPath);
-                    });
-                  })
-                  .catch(error => {
-                    reject(error);
-                  });
-              });
-              createActualPath("$TEMP").then(tempPath => {
-                unzipper.extract({ path: tempPath });
-              });
+              resolve(path);
             })
             .catch(error => {
               reject(error);
@@ -431,7 +337,7 @@ export default {
         }
       });
     },
-    install(tag, repository) {
+    downloadAndProcess(tag, repository, installBool) {
       // launch loading screen
       this.$store.dispatch("Deployer/setDeploying", true);
       let release = _.find(this.releases[ownerId(repository)], {
@@ -443,81 +349,74 @@ export default {
         value: 10
       });
       this.download(repository, release)
-        .then(extractedPath => {
-          this.$store.dispatch("Deployer/setProgress", {
-            tool: repository.name,
-            title: `${extractedPath}...`,
-            value: 50
-          });
-          this.handleSuccessfulInstall(repository, tag);
-        })
-        .catch(error => {
-          this.handleInstallError(error);
-        });
-    },
-    oldInstall(tag, repository) {
-      // launch loading screen
-      this.$store.dispatch("Deployer/setDeploying", true);
-      let release = _.find(this.releases[ownerId(repository)], {
-        tag_name: tag
-      });
-      this.$store.dispatch("Deployer/setProgress", {
-        tool: repository.name,
-        title: `Validating .deployer data...`,
-        value: 0
-      });
-      // fetch deployer data for install and check schema and dependencies
-      this.deployerDataExists(repository)
-        .then(deploy => {
-          this.supportsSchema(deploy.version)
-            .then(() => {
-              this.hasDependencies(deploy.dependson)
-                .then(() => {
-                  // validate deployer data
+        .then(parentPath => {
+          fs.readdir(parentPath, (err, files) => {
+            let deployerFile = _.find(files, file => {
+              return file.includes(".deployer");
+            });
+            if (deployerFile) {
+              fs.readJson(`${parentPath}\\${deployerFile}`)
+                .then(deployerData => {
                   this.$store.dispatch("Deployer/setProgress", {
                     tool: repository.name,
-                    title: `Validating .deployer data...`,
-                    value: 0
+                    title: `Validating Deployer Configuration...`,
+                    value: 20
                   });
+                  console.log("Deployer Data: ", deployerData);
                   this.$store
-                    .dispatch("Deployer/validate", deploy)
+                    .dispatch("Deployer/validate", deployerData)
                     .then(() => {
-                      // check for open processes
                       this.$store.dispatch("Deployer/setProgress", {
                         tool: repository.name,
-                        title: `Checking for open processes...`,
-                        value: 20
+                        title: `Checking Schemas and Dependencies...`,
+                        value: 30
                       });
-                      this.checkForProcessesOpen(deploy.processes)
+                      this.supportsSchema(deployerData.version)
                         .then(() => {
-                          // uninstall current install
-                          this.$store.dispatch("Deployer/setProgress", {
-                            tool: repository.name,
-                            title: `Uninstalling current files...`,
-                            value: 40
-                          });
-                          this.processUninstall(deploy.uninstall)
+                          this.hasDependencies(deployerData.dependson)
                             .then(() => {
-                              // repository files in repo (either zipball of contents or all assets)
                               this.$store.dispatch("Deployer/setProgress", {
                                 tool: repository.name,
-                                title: `Downloading files...`,
-                                value: 60
+                                title: `Checking For Open Processes...`,
+                                value: 40
                               });
-                              this.download(deploy, repository, release)
-                                .then(parentPath => {
-                                  // install files
+                              this.checkForProcessesOpen(deployerData.processes)
+                                .then(() => {
                                   this.$store.dispatch("Deployer/setProgress", {
                                     tool: repository.name,
-                                    title: `Installing files...`,
-                                    value: 80
+                                    title: `Uninstalling Old Files...`,
+                                    value: 60
                                   });
-                                  this.processInstall(deploy, parentPath)
+                                  this.processUninstall(deployerData.uninstall)
                                     .then(() => {
-                                      this.handleSuccessfulInstall(
-                                        repository,
-                                        tag
+                                      this.$store.dispatch(
+                                        "Deployer/setProgress",
+                                        {
+                                          tool: repository.name,
+                                          title: `Installing Files...`,
+                                          value: 80
+                                        }
                                       );
+                                      if (installBool) {
+                                        this.processInstall(
+                                          deployerData,
+                                          parentPath
+                                        )
+                                          .then(() => {
+                                            this.handleSuccessfulInstall(
+                                              repository,
+                                              release.tag_name
+                                            );
+                                          })
+                                          .catch(error => {
+                                            this.handleInstallError(error);
+                                          });
+                                      } else {
+                                        this.handleSuccessfulUninstall(
+                                          repository,
+                                          release.tag_name
+                                        );
+                                      }
                                     })
                                     .catch(error => {
                                       this.handleInstallError(error);
@@ -531,8 +430,12 @@ export default {
                               this.handleInstallError(error);
                             });
                         })
-                        .catch(error => {
-                          this.handleInstallError(error);
+                        .catch(() => {
+                          this.handleInstallError(
+                            `This client does not support installing version ${
+                              deployerData.version
+                            } .deployer configurations`
+                          );
                         });
                     })
                     .catch(error => {
@@ -542,10 +445,12 @@ export default {
                 .catch(error => {
                   this.handleInstallError(error);
                 });
-            })
-            .catch(error => {
-              this.handleInstallError(error);
-            });
+            } else {
+              this.handleInstallError(
+                "No .deployer file found in this release!"
+              );
+            }
+          });
         })
         .catch(error => {
           this.handleInstallError(error);
@@ -558,33 +463,16 @@ export default {
         return false; // eslint-disable-line
       }
     },
-    generateDropdownMenu(download) {
-      let menu = [];
-      _.forEach(this.releases[ownerId(download)], release => {
-        let tag = release.tag_name;
-        let description = release.body;
-        let id = release.id;
-        let prerelease = release.prerelease;
-        let title = release.name;
-        menu.push({
-          tag: tag,
-          id: id,
-          prerelease: prerelease,
-          description: description,
-          release: title
-        });
-        if (!prerelease) {
-          // if a release is found, stop generating the menu
-          return false;
-        }
-      });
-      return menu;
-    },
     flashMessage(message, error) {
+      console.log("Flashing Message: ", message);
       let type;
+      let newMessage;
       error == true ? (type = "is-danger") : (type = "is-success");
+      message.message == null
+        ? (newMessage = message.toString())
+        : (newMessage = message.message.toString());
       this.$toast.open({
-        message: message,
+        message: newMessage,
         position: "is-bottom",
         type: type,
         duration: 2500
@@ -593,6 +481,15 @@ export default {
     getExtension(asset) {
       let substringArray = asset.split(".");
       return substringArray[substringArray.length - 1];
+    },
+    handleSuccessfulUninstall(repository, tag) {
+      this.$store.dispatch("Deployer/removeInstall", repository.id).then(() => {
+        this.stopDeploying();
+        this.flashMessage(
+          `Successfully Uninstalled ${repository.name} ${tag}`,
+          false
+        );
+      });
     },
     handleSuccessfulInstall(repository, tag) {
       this.$store.dispatch("Deployer/setProgress", {
@@ -611,9 +508,8 @@ export default {
         });
     },
     handleInstallError(error) {
-      console.log(error);
       this.stopDeploying();
-      this.flashMessage(error.message, true);
+      this.flashMessage(error, true);
     }
   },
   computed: {
@@ -625,15 +521,6 @@ export default {
     },
     releases() {
       return this.$store.state.Deployer.releases;
-    }
-  },
-  watch: {
-    releases: {
-      handler() {
-        console.log("Releases Have Been Updated");
-        this.$forceUpdate();
-      },
-      deep: true
     }
   }
 };

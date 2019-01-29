@@ -62,7 +62,7 @@ ipcMain.on('check-for-updates', (event) => {
   autoUpdater.on("error", error => {
     console.error(error)
     event.sender.send('auto-updater-message', {
-      message: error,
+      message: error.message,
       type: "is-danger"
     })
   });
@@ -76,15 +76,15 @@ ipcMain.on('check-for-updates', (event) => {
     autoUpdater.quitAndInstall();
   });
 
-  const data = {
-    provider: 'github',
-    owner: 'WeConnect',
-    repo: 'dot-deployer-client',
-    token: process.env.GH_TOKEN,
-    private: true
-  };
+  // const data = {
+  //   provider: 'github',
+  //   owner: 'WeConnect',
+  //   repo: 'dot-deployer-client',
+  //   token: process.env.GH_TOKEN,
+  //   private: true
+  // };
 
-  autoUpdater.setFeedURL(data)
+  // autoUpdater.setFeedURL(data)
   autoUpdater.checkForUpdates();
 })
 

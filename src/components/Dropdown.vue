@@ -38,9 +38,12 @@
 </template>
 
 <script>
+import { ownerId } from "../helpers.js";
+const _ = require("lodash");
+
 export default {
   name: "dropdown",
-  props: ["title", "menu", "tag", "update"],
+  props: ["title", "repository", "tag", "update"],
   data() {
     return {
       active: false
@@ -49,6 +52,32 @@ export default {
   computed: {
     installs() {
       return this.$store.state.Deployer.installs;
+    },
+    releases() {
+      this.$forceUpdate();
+      return this.$store.state.Deployer.releases;
+    },
+    menu() {
+      let menu = [];
+      _.forEach(this.releases[ownerId(this.repository)], release => {
+        let tag = release.tag_name;
+        let description = release.body;
+        let id = release.id;
+        let prerelease = release.prerelease;
+        let title = release.name;
+        menu.push({
+          tag: tag,
+          id: id,
+          prerelease: prerelease,
+          description: description,
+          release: title
+        });
+        if (!prerelease) {
+          // if a release is found, stop generating the menu
+          return false;
+        }
+      });
+      return menu;
     }
   },
   methods: {

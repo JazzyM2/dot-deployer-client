@@ -1,13 +1,5 @@
 <template>
   <div class="nav">
-    <!-- MESSAGE MODAL -->
-    <div v-if="message !== null" class="modal is-active animated fadeIn">
-      <div class="modal-background"></div>
-      <div
-        :class="{'notification': true, 'is-primary': !message.error, 'is-danger': message.error}"
-      >{{ message.message | capitalize }}</div>
-    </div>
-    <!-- MESSAGE MODAL -->
     <!-- NAVIGATION BAR -->
     <nav class="animated fadeInDown level">
       <div class="level-left has-text-centered">
@@ -107,9 +99,6 @@ export default {
     userImage() {
       let user = firebase.auth().currentUser;
       return user ? firebase.auth().currentUser.photoURL : null;
-    },
-    message() {
-      return this.$store.state.Deployer.message;
     },
     users() {
       return this.$store.state.Deployer.users;
