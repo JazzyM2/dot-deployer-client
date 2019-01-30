@@ -1,18 +1,29 @@
 <template>
   <div>
     <table class="table is-narrow is-striped is-hoverable is-fullwidth animated fadeIn">
-      <tbody>
-        <tr v-for="(repository, index) in source" :key="index">
-          <td class="insights">
+      <tbody v-for="(repository, index) in source" :key="index">
+        <tr>
+          <td @click="toggleRepoInsights(repository)" class="insights">
             <span class="icon">
-              <i class="expand fa fa-info" aria-hidden="true" @click="launchModal(repository)"></i>
+              <i
+                v-if="repoToggles[repository.id] == true"
+                class="expand fa fa-caret-up"
+                aria-hidden="true"
+                @click="toggleRepoInsights(repository)"
+              ></i>
+              <i
+                v-else
+                class="expand fa fa-caret-down"
+                aria-hidden="true"
+                @click="toggleRepoInsights(repository)"
+              ></i>
             </span>
           </td>
-          <td class="tool">
-            <p class="download-title">{{ repository.name | chopString(30) | capitalize }}</p>
+          <td @click="toggleRepoInsights(repository)" class="tool">
+            <p class="download-title">{{ getRepositoryName(repository) | chopString(30) }}</p>
           </td>
-          <td class="description">
-            <p class="download-description">{{ repository.description }}</p>
+          <td @click="toggleRepoInsights(repository)" class="description">
+            <p class="download-description">{{ repository.description | chopString(50) }}</p>
           </td>
           <td class="version">
             <button
@@ -24,7 +35,7 @@
             <dropdown
               class="dropdown"
               title="Install"
-              :update="isAnyUpdatePresent(repository)"
+              :update="isUpdateAvailable(repository, false)"
               :repository="repository"
               :tag="getInstalledTag(repository)"
               @change-event="downloadAndProcess($event, repository, true)"
@@ -38,6 +49,30 @@
             >Uninstall</button>
           </td>
         </tr>
+        <tr v-if="repoToggles[repository.id] == true" class="animated fadeIn">
+          <td></td>
+          <td>
+            <b-tooltip
+              v-if="isAdmin"
+              :active="formInput.hasOwnProperty(repository.id)"
+              size="is-small"
+              label="Press Enter To Update"
+              position="is-bottom"
+              type="is-white"
+            >
+              <input
+                class="input is-info is-small"
+                :placeholder="getRepositoryName(repository)"
+                v-model="formInput[repository.id]"
+                @keyup.enter="editRepoName(repository)"
+              >
+            </b-tooltip>
+          </td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -46,11 +81,17 @@
 <script>
 import Dropdown from "./Dropdown";
 
-import { ownerId, ownerName, createActualPath } from "../helpers.js";
+import {
+  ownerId,
+  ownerName,
+  createActualPath,
+  flattenObject
+} from "../helpers.js";
 
 const _ = require("lodash");
 const fs = require("fs-extra");
 const DecompressZip = require("decompress-zip");
+const firebase = require("firebase");
 const psList = require("ps-list");
 const { shell } = require("electron");
 
@@ -59,68 +100,85 @@ export default {
   data() {
     return {
       confirm: false,
-      modalMessage: null
+      repoToggles: {},
+      formInput: {}
     };
   },
   components: {
     dropdown: Dropdown
   },
-  mounted() {},
+  mounted() {
+    this.checkForUpdates();
+  },
   props: ["source", "admin"],
   methods: {
+    getRepositoryName(repository) {
+      let metadata = _.find(this.metadata, obj => {
+        return obj.id == repository.id;
+      });
+      if (metadata) {
+        return metadata.name; // metadata automatically piped with github name on creation
+      } else {
+        return repository.name;
+      }
+    },
+    editRepoName(repository) {
+      let payload = {};
+      let metadata = _.find(this.metadata, obj => {
+        return obj.id == repository.id;
+      });
+      payload.key = metadata.key;
+      payload.name = this.formInput[repository.id];
+      // make sure user has entered something
+      if (payload.name) {
+        this.$store
+          .dispatch("Deployer/updateRepoName", payload)
+          .then(() => {
+            delete this.formInput[repository.id];
+            this.$forceUpdate();
+          })
+          .catch(error => {
+            this.flashMessage(error, true);
+          });
+      }
+    },
+    checkForUpdates() {
+      _.forEach(this.source, repository => {
+        if (this.isUpdateAvailable(repository, true)) {
+          let identity = ownerId(repository);
+          let releases = this.releases[identity];
+          let latestReleaseTag = this.getLatestReleaseTag(releases);
+          // TODO add a "then continue" after each promise to make multiple installs sequential?
+          this.downloadAndProcess(latestReleaseTag, repository, true);
+        }
+      });
+    },
     getIndexOfTag(releases, releaseTag) {
       let foundRelease = _.find(releases, { tag_name: releaseTag });
       return releases.indexOf(foundRelease);
     },
     getLatestReleaseTag(releases) {
       let latestTag = _.find(releases, { prerelease: false });
-      if (latestTag) {
-        return latestTag.tag_name;
-      } else {
-        return latestTag;
-      }
+      return latestTag ? latestTag.tag_name : null;
     },
     getInstalledTag(download) {
       if (this.isInstalled(download)) {
         return this.installs[this.computerId].installs[download.id].tag;
       }
     },
-    isAnyUpdatePresent(download) {
-      let identity = ownerId(download);
-      let releases = this.releases[identity];
-      if (releases) {
-        if (releases.length > 0) {
-          let installedTag = this.getInstalledTag(download);
-          let latestTag = releases[0].tag_name;
-          if (!installedTag || !latestTag) {
-            return false; // do not try to update
-          }
-          let indexOfInstalled = this.getIndexOfTag(releases, installedTag);
-          let indexOfLatest = this.getIndexOfTag(releases, latestTag);
-          if (indexOfInstalled === -1) {
-            // install is no longer present in releases, update!
-            return true;
-          } else if (indexOfInstalled > indexOfLatest) {
-            // an update is available!
-            return true;
-          } else {
-            // no update available
-            return false;
-          }
-        } else {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    },
-    isUpdateAvailable(download) {
+    isUpdateAvailable(download, releaseOnly) {
       // only return true for releases that are more current than installed!!
       let identity = ownerId(download);
       let releases = this.releases[identity];
+      if (!releases) {
+        return false;
+      }
       if (releases.length > 0) {
         let installedTag = this.getInstalledTag(download);
-        let latestTag = this.getLatestReleaseTag(releases);
+        let latestTag = "";
+        releaseOnly == true
+          ? (latestTag = this.getLatestReleaseTag(releases))
+          : (latestTag = releases[0].tag_name);
         if (!installedTag || !latestTag) {
           return false; // do not try to update
         }
@@ -140,12 +198,16 @@ export default {
         return false;
       }
     },
-    launchModal(repository) {
-      this.$store.dispatch("Deployer/setModalActive", true);
-      this.$store.dispatch("Deployer/setDownloadSelected", repository);
-    },
-    isAvailable(repository) {
-      return _.find(this.downloads, { id: repository.id });
+    toggleRepoInsights(repository) {
+      let currentToggleSetting = this.repoToggles[repository.id];
+      if (!currentToggleSetting) {
+        this.repoToggles[repository.id] = true;
+      } else {
+        this.repoToggles[repository.id] = !currentToggleSetting;
+      }
+      this.$nextTick(() => {
+        this.$forceUpdate();
+      });
     },
     checkForProcessesOpen(processes) {
       return new Promise((resolve, reject) => {
@@ -224,19 +286,23 @@ export default {
         resolve();
       });
     },
-    processUninstall(uninstall) {
+    processUninstall(uninstall, parentPath) {
       return new Promise(resolve => {
         if (!uninstall) {
           resolve();
         } else {
           _.forEach(uninstall, operation => {
-            createActualPath(operation.source).then(path => {
-              if (operation.action === "run") {
-                shell.openItem(path);
-              } else if (operation.action === "delete") {
+            if (operation.action === "run") {
+              createActualPath(`${parentPath}\\${operation.source}`).then(
+                path => {
+                  shell.openItem(path);
+                }
+              );
+            } else if (operation.action === "delete") {
+              createActualPath(operation.source).then(path => {
                 fs.removeSync(path);
-              }
-            });
+              });
+            }
           });
           resolve();
         }
@@ -251,7 +317,7 @@ export default {
             let destFilePath = `${decodedPath}\\${fileName}`;
             // copy file to destination
             console.log(`copying from ${tempFilePath} to ${destFilePath}`);
-            fs.move(tempFilePath, destFilePath)
+            fs.copy(tempFilePath, destFilePath)
               .then(() => {
                 let extension = this.getExtension(fileName);
                 if (
@@ -270,7 +336,7 @@ export default {
                     });
                   });
                   // extract contents
-                  unzipper.extract({ path: `${parentPath}` });
+                  unzipper.extract({ path: decodedPath });
                 } else {
                   resolve();
                 }
@@ -344,7 +410,7 @@ export default {
         tag_name: tag
       });
       this.$store.dispatch("Deployer/setProgress", {
-        tool: repository.name,
+        tool: this.getRepositoryName(repository),
         title: `Downloading Release...`,
         value: 10
       });
@@ -358,7 +424,7 @@ export default {
               fs.readJson(`${parentPath}\\${deployerFile}`)
                 .then(deployerData => {
                   this.$store.dispatch("Deployer/setProgress", {
-                    tool: repository.name,
+                    tool: this.getRepositoryName(repository),
                     title: `Validating Deployer Configuration...`,
                     value: 20
                   });
@@ -367,7 +433,7 @@ export default {
                     .dispatch("Deployer/validate", deployerData)
                     .then(() => {
                       this.$store.dispatch("Deployer/setProgress", {
-                        tool: repository.name,
+                        tool: this.getRepositoryName(repository),
                         title: `Checking Schemas and Dependencies...`,
                         value: 30
                       });
@@ -376,28 +442,33 @@ export default {
                           this.hasDependencies(deployerData.dependson)
                             .then(() => {
                               this.$store.dispatch("Deployer/setProgress", {
-                                tool: repository.name,
+                                tool: this.getRepositoryName(repository),
                                 title: `Checking For Open Processes...`,
                                 value: 40
                               });
                               this.checkForProcessesOpen(deployerData.processes)
                                 .then(() => {
                                   this.$store.dispatch("Deployer/setProgress", {
-                                    tool: repository.name,
+                                    tool: this.getRepositoryName(repository),
                                     title: `Uninstalling Old Files...`,
                                     value: 60
                                   });
-                                  this.processUninstall(deployerData.uninstall)
+                                  this.processUninstall(
+                                    deployerData.uninstall,
+                                    parentPath
+                                  )
                                     .then(() => {
-                                      this.$store.dispatch(
-                                        "Deployer/setProgress",
-                                        {
-                                          tool: repository.name,
-                                          title: `Installing Files...`,
-                                          value: 80
-                                        }
-                                      );
                                       if (installBool) {
+                                        this.$store.dispatch(
+                                          "Deployer/setProgress",
+                                          {
+                                            tool: this.getRepositoryName(
+                                              repository
+                                            ),
+                                            title: `Installing Files...`,
+                                            value: 80
+                                          }
+                                        );
                                         this.processInstall(
                                           deployerData,
                                           parentPath
@@ -486,14 +557,16 @@ export default {
       this.$store.dispatch("Deployer/removeInstall", repository.id).then(() => {
         this.stopDeploying();
         this.flashMessage(
-          `Successfully Uninstalled ${repository.name} ${tag}`,
+          `Successfully Uninstalled ${this.getRepositoryName(
+            repository
+          )} ${tag}`,
           false
         );
       });
     },
     handleSuccessfulInstall(repository, tag) {
       this.$store.dispatch("Deployer/setProgress", {
-        tool: repository.name,
+        tool: this.getRepositoryName(repository),
         title: `Successfully Installed!`,
         value: 100
       });
@@ -502,7 +575,9 @@ export default {
         .then(() => {
           this.stopDeploying();
           this.flashMessage(
-            `Successfully installed: ${repository.name} ${tag}`,
+            `Successfully installed: ${this.getRepositoryName(
+              repository
+            )} ${tag}`,
             false
           );
         });
@@ -521,17 +596,47 @@ export default {
     },
     releases() {
       return this.$store.state.Deployer.releases;
+    },
+    githubTrigger() {
+      return this.$store.state.Deployer.githubTrigger;
+    },
+    users() {
+      return this.$store.state.Deployer.users;
+    },
+    metadata() {
+      return flattenObject(this.$store.state.Deployer.metadata);
+    },
+    userEmail() {
+      let user = firebase.auth().currentUser;
+      return user ? firebase.auth().currentUser.email : null;
+    },
+    isAdmin() {
+      let user = _.find(this.users, { email: this.userEmail });
+      if (user != null) {
+        return user.role == "admin";
+      } else {
+        return false;
+      }
+    }
+  },
+  watch: {
+    githubTrigger: function() {
+      console.log("Checking for updates...");
+      this.checkForUpdates();
     }
   }
 };
 </script>
 
 <style lang="sass" scoped>
-  // td.insights
-  //   width: 20px
+  td.insights
+    width: 20px
+    cursor: pointer
   td.tool
     width: 220px
-  // td.description
+    cursor: pointer
+  td.description
+    cursor: pointer
   //   width: 250px
   // td.version
   //   width: 40px
@@ -542,7 +647,7 @@ export default {
   //   height: 18px
   // button.uninstall
   //   margin-left: 8px
-  i.expand 
+  i.expand
     color: $info
     cursor: pointer
   i.yellow

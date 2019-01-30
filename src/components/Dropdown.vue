@@ -25,11 +25,9 @@
           <b
             :class="{'title': true, 'pre-release': isPreRelease(value), 'release': !isPreRelease(value)}"
           >{{ value.release | chopString(30) }}</b>
-          <button
-            :class="{'is-static': true, 'is-rounded': true, 'isprerelease': true, 'button': true, 'is-small': true, 'is-outlined': true, 'is-warning': isPreRelease(value), 'is-primary': !isPreRelease(value)}"
-          >
-            <p class="small">{{ value.tag }} - {{ describeRelease(value) }}</p>
-          </button>
+          <i
+            :class="{'title': true, 'pre-release': isPreRelease(value), 'release': !isPreRelease(value)}"
+          >{{ value.tag }} - {{ describeRelease(value) }}</i>
           <p class="description info">{{ value.description | chopString(70) }}</p>
         </a>
       </div>
@@ -54,7 +52,6 @@ export default {
       return this.$store.state.Deployer.installs;
     },
     releases() {
-      this.$forceUpdate();
       return this.$store.state.Deployer.releases;
     },
     menu() {
@@ -116,6 +113,11 @@ export default {
 </script>
 
 <style lang="sass" scoped>
+  i.title
+    margin-left: 6px
+    font-size: 10px
+  b.title
+    font-size: 12px
   .dropdown-content
     padding: 0px
     margin: 0px
@@ -129,18 +131,8 @@ export default {
     color: $primary
   .info
     color: $info
-  .title
-    font-size: 12px
   .description
     font-size: 10px
   .small
     font-size: 9px
-  button.dropdown
-    // height: 18px
-  button.isprerelease
-    height: 8px
-    // padding: 1px
-    // padding-top: 5px
-    margin-left: 3px
-    margin-top: 7px
 </style>
