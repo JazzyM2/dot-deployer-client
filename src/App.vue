@@ -18,6 +18,12 @@ export default {
 </script>
 
 <style lang="sass" scoped>
+html
+  overflow: scroll
+  overflow-x: hidden
+::-webkit-scrollbar 
+  width: 0px
+  background: transparent
 section.section
   position: absolute
   overflow-y: auto

@@ -37,7 +37,6 @@ export default {
   mounted() {
     this.enableAutoStart();
     this.getComputerId();
-    // this.checkForUpdates();
     process.env.NODE_ENV === "production"
       ? this.checkForUpdates()
       : this.firebaseAuthListener();
@@ -150,6 +149,7 @@ export default {
       firebase.auth().signInAndRetrieveDataWithCredential(credential);
     },
     flashMessage(message, type) {
+      console.log("Flash Message: ", message);
       this.$toast.open({
         message: message,
         position: "is-bottom",

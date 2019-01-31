@@ -1,6 +1,6 @@
 <template>
   <div class="manage animated fadeIn">
-    <dottable class="released" :source="getSource" :admin="isAdmin"></dottable>
+    <dottable class="released" :source="getAuthorizedRepositories"></dottable>
     <!-- LOADING SCREEN -->
     <div v-if="deploying && progress != null" class="modal is-active animated fadeIn">
       <div class="modal-background"></div>
@@ -74,6 +74,11 @@ export default {
     }
   },
   methods: {
+    matchMetadataWithGithubRepository(repository) {
+      return _.find(this.metadata, obj => {
+        return obj.id == repository.id;
+      });
+    },
     getUrl(type) {
       let identity = ownerId(this.downloadSelected);
       let deploy = this.deployers[identity];
@@ -115,21 +120,28 @@ export default {
     metadata() {
       return flattenObject(this.$store.state.Deployer.metadata);
     },
-    // unreleased() {
-    //   let unreleased = [];
-    //   _.forEach(this.repositories, repo => {
-    //     if (!_.find(this.metadata, { id: repo.id })) {
-    //       unreleased.push(repo);
-    //     }
-    //   });
-    //   return unreleased;
-    // },
     users() {
       return this.$store.state.Deployer.users;
     },
     userEmail() {
       let user = firebase.auth().currentUser;
       return user ? firebase.auth().currentUser.email : null;
+    },
+    userName() {
+      let user = _.find(this.users, { email: this.userEmail });
+      if (user != null) {
+        return user.name;
+      } else {
+        return null;
+      }
+    },
+    userRole() {
+      let user = _.find(this.users, { email: this.userEmail });
+      if (user != null) {
+        return user.role;
+      } else {
+        return null;
+      }
     },
     isAdmin() {
       let user = _.find(this.users, { email: this.userEmail });
@@ -139,12 +151,24 @@ export default {
         return false;
       }
     },
-    getSource() {
+    getAuthorizedRepositories() {
       if (this.isAdmin) {
         return this.repositories;
       } else {
-        // TODO return a list of repositories that match the users role
-        return this.repositories;
+        let result = [];
+        _.forEach(this.repositories, repository => {
+          let metadata = this.matchMetadataWithGithubRepository(repository);
+          let allowedUsers = metadata.users;
+          if (Array.isArray(allowedUsers)) {
+            if (
+              allowedUsers.includes(this.userRole) ||
+              allowedUsers.includes(this.userName)
+            ) {
+              result.push(repository);
+            }
+          }
+        });
+        return result;
       }
     }
   }

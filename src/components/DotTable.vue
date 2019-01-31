@@ -1,18 +1,23 @@
 <template>
   <div>
     <table class="table is-narrow is-striped is-hoverable is-fullwidth animated fadeIn">
-      <tbody>
-        <tr v-for="(repository, index) in source" :key="index">
-          <td class="insights">
-            <span class="icon">
-              <i class="expand fa fa-info" aria-hidden="true" @click="launchModal(repository)"></i>
+      <tbody v-for="(repository, index) in source" :key="index">
+        <tr>
+          <td @click="toggleRepoInsights(repository)" class="insights">
+            <span class="icon animated fadeIn">
+              <i
+                v-if="repoToggles[repository.id] == true"
+                class="expand fa fa-chevron-up"
+                aria-hidden="true"
+              ></i>
+              <i v-else class="expand fa fa-chevron-down" aria-hidden="true"></i>
             </span>
           </td>
-          <td class="tool">
-            <p class="download-title">{{ repository.name | chopString(30) | capitalize }}</p>
+          <td @click="toggleRepoInsights(repository)" class="tool">
+            <p class="download-title">{{ getRepositoryName(repository) | chopString(30) }}</p>
           </td>
-          <td class="description">
-            <p class="download-description">{{ repository.description }}</p>
+          <td @click="toggleRepoInsights(repository)" class="description">
+            <p class="download-description">{{ repository.description | chopString(50) }}</p>
           </td>
           <td class="version">
             <button
@@ -24,7 +29,7 @@
             <dropdown
               class="dropdown"
               title="Install"
-              :update="isAnyUpdatePresent(repository)"
+              :update="isUpdateAvailable(repository, false)"
               :repository="repository"
               :tag="getInstalledTag(repository)"
               @change-event="downloadAndProcess($event, repository, true)"
@@ -38,6 +43,87 @@
             >Uninstall</button>
           </td>
         </tr>
+        <tr v-if="repoToggles[repository.id] == true" class="user-panel animated fadeIn">
+          <td>
+            <i class="user-icon fa fa-info" aria-hidden="true"></i>
+          </td>
+          <td>
+            <span>
+              <label class="label is-light is-small">Information</label>
+              <b-taglist attached>
+                <b-tag type="is-white">Issues</b-tag>
+                <b-tag type="is-grey">
+                  <b>{{ repository.open_issues }}</b>
+                </b-tag>&nbsp;&nbsp;
+                <b-tag type="is-white">Releases</b-tag>
+                <b-tag type="is-grey">
+                  <b>{{ getReleasesCount(repository) }}</b>
+                </b-tag>
+              </b-taglist>
+            </span>
+          </td>
+          <td>
+            <span>
+              <label class="label is-light is-small">Users</label>
+              <b-field v-if="matchMetadataWithGithubRepository(repository)" grouped group-multiline>
+                <div
+                  v-for="(user, index) in matchMetadataWithGithubRepository(repository).users"
+                  :key="repository.id + index"
+                  class="control"
+                >
+                  <b-tag
+                    @close="toggleUserPermissions(user, repository)"
+                    type="is-white"
+                    attached
+                    :closable="isAdmin"
+                  >{{ user }}</b-tag>
+                </div>
+              </b-field>
+            </span>
+          </td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr
+          v-if="repoToggles[repository.id] == true && isAdmin"
+          class="admin-panel animated fadeIn is-hovered"
+        >
+          <td>
+            <i class="admin-icon fa fa-cog" aria-hidden="true"></i>
+          </td>
+          <td>
+            <span>
+              <label class="details tool label is-light is-small">Edit Name</label>
+              <input
+                class="input is-info is-small"
+                :placeholder="getRepositoryName(repository)"
+                v-model="formName[repository.id]"
+                @keyup.enter="editRepoName(repository)"
+              >
+            </span>
+          </td>
+          <td>
+            <span>
+              <label class="details label is-light is-small">Add Users</label>
+              <b-autocomplete
+                :keep-first="true"
+                :clear-on-select="true"
+                size="is-small"
+                type="is-dark"
+                v-model="userSearch[repository.id]"
+                :data="filteredUsersArray(repository)"
+                placeholder="search users or roles..."
+                icon-pack="fa"
+                icon="user"
+                @select="user => toggleUserPermissions(user, repository)"
+              ></b-autocomplete>
+            </span>
+          </td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -46,11 +132,17 @@
 <script>
 import Dropdown from "./Dropdown";
 
-import { ownerId, ownerName, createActualPath } from "../helpers.js";
+import {
+  ownerId,
+  ownerName,
+  createActualPath,
+  flattenObject
+} from "../helpers.js";
 
 const _ = require("lodash");
 const fs = require("fs-extra");
 const DecompressZip = require("decompress-zip");
+const firebase = require("firebase");
 const psList = require("ps-list");
 const { shell } = require("electron");
 
@@ -58,69 +150,110 @@ export default {
   name: "DotTable",
   data() {
     return {
-      confirm: false,
-      modalMessage: null
+      repoToggles: {},
+      formName: {},
+      userSearch: {}
     };
   },
   components: {
     dropdown: Dropdown
   },
-  mounted() {},
-  props: ["source", "admin"],
+  mounted() {
+    this.checkForUpdates();
+  },
+  props: ["source"],
   methods: {
+    getReleasesCount(repository) {
+      let identity = ownerId(repository);
+      let releases = this.releases[identity];
+      if (releases) {
+        return releases.length;
+      } else {
+        return 0;
+      }
+    },
+    matchMetadataWithGithubRepository(repository) {
+      return _.find(this.metadata, obj => {
+        return obj.id == repository.id;
+      });
+    },
+    toggleUserPermissions(userOrGroup, repository) {
+      let metadata = this.matchMetadataWithGithubRepository(repository);
+      if (!userOrGroup || !metadata) {
+        return;
+      }
+      let payload = {};
+      payload.metadata = metadata;
+      payload.user = userOrGroup;
+      this.$store
+        .dispatch("Deployer/updateRepoPermissions", payload)
+        .catch(error => {
+          this.flashMessage(error, true);
+        });
+    },
+    getRepositoryName(repository) {
+      let metadata = this.matchMetadataWithGithubRepository(repository);
+      if (metadata) {
+        return metadata.name; // metadata automatically piped with github name on creation
+      } else {
+        return repository.name;
+      }
+    },
+    editRepoName(repository) {
+      let payload = {};
+      let metadata = this.matchMetadataWithGithubRepository(repository);
+      payload.key = metadata.key;
+      payload.name = this.formName[repository.id];
+      // make sure user has entered something
+      if (payload.name) {
+        this.$store
+          .dispatch("Deployer/updateRepoName", payload)
+          .then(() => {
+            delete this.formName[repository.id];
+            this.$forceUpdate();
+          })
+          .catch(error => {
+            this.flashMessage(error, true);
+          });
+      }
+    },
+    checkForUpdates() {
+      _.forEach(this.source, repository => {
+        if (this.isUpdateAvailable(repository, true)) {
+          let identity = ownerId(repository);
+          let releases = this.releases[identity];
+          let latestReleaseTag = this.getLatestReleaseTag(releases);
+          // TODO add a "then continue" after each promise to make multiple installs sequential?
+          this.downloadAndProcess(latestReleaseTag, repository, true);
+        }
+      });
+    },
     getIndexOfTag(releases, releaseTag) {
       let foundRelease = _.find(releases, { tag_name: releaseTag });
       return releases.indexOf(foundRelease);
     },
     getLatestReleaseTag(releases) {
       let latestTag = _.find(releases, { prerelease: false });
-      if (latestTag) {
-        return latestTag.tag_name;
-      } else {
-        return latestTag;
-      }
+      return latestTag ? latestTag.tag_name : null;
     },
     getInstalledTag(download) {
       if (this.isInstalled(download)) {
         return this.installs[this.computerId].installs[download.id].tag;
       }
     },
-    isAnyUpdatePresent(download) {
-      let identity = ownerId(download);
-      let releases = this.releases[identity];
-      if (releases) {
-        if (releases.length > 0) {
-          let installedTag = this.getInstalledTag(download);
-          let latestTag = releases[0].tag_name;
-          if (!installedTag || !latestTag) {
-            return false; // do not try to update
-          }
-          let indexOfInstalled = this.getIndexOfTag(releases, installedTag);
-          let indexOfLatest = this.getIndexOfTag(releases, latestTag);
-          if (indexOfInstalled === -1) {
-            // install is no longer present in releases, update!
-            return true;
-          } else if (indexOfInstalled > indexOfLatest) {
-            // an update is available!
-            return true;
-          } else {
-            // no update available
-            return false;
-          }
-        } else {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    },
-    isUpdateAvailable(download) {
+    isUpdateAvailable(download, releaseOnly) {
       // only return true for releases that are more current than installed!!
       let identity = ownerId(download);
       let releases = this.releases[identity];
+      if (!releases) {
+        return false;
+      }
       if (releases.length > 0) {
         let installedTag = this.getInstalledTag(download);
-        let latestTag = this.getLatestReleaseTag(releases);
+        let latestTag = "";
+        releaseOnly == true
+          ? (latestTag = this.getLatestReleaseTag(releases))
+          : (latestTag = releases[0].tag_name);
         if (!installedTag || !latestTag) {
           return false; // do not try to update
         }
@@ -140,12 +273,16 @@ export default {
         return false;
       }
     },
-    launchModal(repository) {
-      this.$store.dispatch("Deployer/setModalActive", true);
-      this.$store.dispatch("Deployer/setDownloadSelected", repository);
-    },
-    isAvailable(repository) {
-      return _.find(this.downloads, { id: repository.id });
+    toggleRepoInsights(repository) {
+      let currentToggleSetting = this.repoToggles[repository.id];
+      if (!currentToggleSetting) {
+        this.repoToggles[repository.id] = true;
+      } else {
+        this.repoToggles[repository.id] = !currentToggleSetting;
+      }
+      this.$nextTick(() => {
+        this.$forceUpdate();
+      });
     },
     checkForProcessesOpen(processes) {
       return new Promise((resolve, reject) => {
@@ -224,19 +361,23 @@ export default {
         resolve();
       });
     },
-    processUninstall(uninstall) {
+    processUninstall(uninstall, parentPath) {
       return new Promise(resolve => {
         if (!uninstall) {
           resolve();
         } else {
           _.forEach(uninstall, operation => {
-            createActualPath(operation.source).then(path => {
-              if (operation.action === "run") {
-                shell.openItem(path);
-              } else if (operation.action === "delete") {
+            if (operation.action === "run") {
+              createActualPath(`${parentPath}\\${operation.source}`).then(
+                path => {
+                  shell.openItem(path);
+                }
+              );
+            } else if (operation.action === "delete") {
+              createActualPath(operation.source).then(path => {
                 fs.removeSync(path);
-              }
-            });
+              });
+            }
           });
           resolve();
         }
@@ -251,7 +392,7 @@ export default {
             let destFilePath = `${decodedPath}\\${fileName}`;
             // copy file to destination
             console.log(`copying from ${tempFilePath} to ${destFilePath}`);
-            fs.move(tempFilePath, destFilePath)
+            fs.copy(tempFilePath, destFilePath)
               .then(() => {
                 let extension = this.getExtension(fileName);
                 if (
@@ -270,7 +411,7 @@ export default {
                     });
                   });
                   // extract contents
-                  unzipper.extract({ path: `${parentPath}` });
+                  unzipper.extract({ path: decodedPath });
                 } else {
                   resolve();
                 }
@@ -344,7 +485,7 @@ export default {
         tag_name: tag
       });
       this.$store.dispatch("Deployer/setProgress", {
-        tool: repository.name,
+        tool: this.getRepositoryName(repository),
         title: `Downloading Release...`,
         value: 10
       });
@@ -358,7 +499,7 @@ export default {
               fs.readJson(`${parentPath}\\${deployerFile}`)
                 .then(deployerData => {
                   this.$store.dispatch("Deployer/setProgress", {
-                    tool: repository.name,
+                    tool: this.getRepositoryName(repository),
                     title: `Validating Deployer Configuration...`,
                     value: 20
                   });
@@ -367,7 +508,7 @@ export default {
                     .dispatch("Deployer/validate", deployerData)
                     .then(() => {
                       this.$store.dispatch("Deployer/setProgress", {
-                        tool: repository.name,
+                        tool: this.getRepositoryName(repository),
                         title: `Checking Schemas and Dependencies...`,
                         value: 30
                       });
@@ -376,28 +517,33 @@ export default {
                           this.hasDependencies(deployerData.dependson)
                             .then(() => {
                               this.$store.dispatch("Deployer/setProgress", {
-                                tool: repository.name,
+                                tool: this.getRepositoryName(repository),
                                 title: `Checking For Open Processes...`,
                                 value: 40
                               });
                               this.checkForProcessesOpen(deployerData.processes)
                                 .then(() => {
                                   this.$store.dispatch("Deployer/setProgress", {
-                                    tool: repository.name,
+                                    tool: this.getRepositoryName(repository),
                                     title: `Uninstalling Old Files...`,
                                     value: 60
                                   });
-                                  this.processUninstall(deployerData.uninstall)
+                                  this.processUninstall(
+                                    deployerData.uninstall,
+                                    parentPath
+                                  )
                                     .then(() => {
-                                      this.$store.dispatch(
-                                        "Deployer/setProgress",
-                                        {
-                                          tool: repository.name,
-                                          title: `Installing Files...`,
-                                          value: 80
-                                        }
-                                      );
                                       if (installBool) {
+                                        this.$store.dispatch(
+                                          "Deployer/setProgress",
+                                          {
+                                            tool: this.getRepositoryName(
+                                              repository
+                                            ),
+                                            title: `Installing Files...`,
+                                            value: 80
+                                          }
+                                        );
                                         this.processInstall(
                                           deployerData,
                                           parentPath
@@ -486,14 +632,16 @@ export default {
       this.$store.dispatch("Deployer/removeInstall", repository.id).then(() => {
         this.stopDeploying();
         this.flashMessage(
-          `Successfully Uninstalled ${repository.name} ${tag}`,
+          `Successfully Uninstalled ${this.getRepositoryName(
+            repository
+          )} ${tag}`,
           false
         );
       });
     },
     handleSuccessfulInstall(repository, tag) {
       this.$store.dispatch("Deployer/setProgress", {
-        tool: repository.name,
+        tool: this.getRepositoryName(repository),
         title: `Successfully Installed!`,
         value: 100
       });
@@ -502,7 +650,9 @@ export default {
         .then(() => {
           this.stopDeploying();
           this.flashMessage(
-            `Successfully installed: ${repository.name} ${tag}`,
+            `Successfully installed: ${this.getRepositoryName(
+              repository
+            )} ${tag}`,
             false
           );
         });
@@ -510,9 +660,39 @@ export default {
     handleInstallError(error) {
       this.stopDeploying();
       this.flashMessage(error, true);
+    },
+    filteredUsersArray(repository) {
+      let result = [];
+      if (this.userSearch[repository.id]) {
+        result = this.userNames.filter(option => {
+          return (
+            option
+              .toString()
+              .toLowerCase()
+              .indexOf(this.userSearch[repository.id].toLowerCase()) >= 0
+          );
+        });
+      } else {
+        result = this.userNames;
+      }
+      result = result.concat(this.userRoles);
+      let metadata = this.matchMetadataWithGithubRepository(repository);
+      if (metadata && metadata.users)
+        _.remove(result, r => {
+          return metadata.users.includes(r);
+        });
+      return result;
     }
   },
   computed: {
+    userRoles() {
+      let flattenedUsers = flattenObject(this.users);
+      return _.uniq(_.map(flattenedUsers, "role"));
+    },
+    userNames() {
+      let flattenedUsers = flattenObject(this.users);
+      return _.map(flattenedUsers, "name");
+    },
     computerId() {
       return this.$store.state.Deployer.computerId;
     },
@@ -521,34 +701,67 @@ export default {
     },
     releases() {
       return this.$store.state.Deployer.releases;
+    },
+    githubTrigger() {
+      return this.$store.state.Deployer.githubTrigger;
+    },
+    users() {
+      return this.$store.state.Deployer.users;
+    },
+    metadata() {
+      return flattenObject(this.$store.state.Deployer.metadata);
+    },
+    userEmail() {
+      let user = firebase.auth().currentUser;
+      return user ? firebase.auth().currentUser.email : null;
+    },
+    isAdmin() {
+      let user = _.find(this.users, { email: this.userEmail });
+      if (user != null) {
+        return user.role == "admin";
+      } else {
+        return false;
+      }
+    }
+  },
+  watch: {
+    githubTrigger: function() {
+      console.log("Checking for updates...");
+      this.checkForUpdates();
     }
   }
 };
 </script>
 
 <style lang="sass" scoped>
-  // td.insights
-  //   width: 20px
+  td.insights
+    width: 20px
+    cursor: pointer
   td.tool
     width: 220px
-  // td.description
-  //   width: 250px
-  // td.version
-  //   width: 40px
-  // td.action:not(:last-child)
-  //   padding-left: 4px
-  //   padding-right: 4px
-  // button.is-rounded
-  //   height: 18px
-  // button.uninstall
-  //   margin-left: 8px
-  i.expand 
+    cursor: pointer
+  td.description
+    cursor: pointer
+  .label
+    font-size: 2px
     color: $info
+  .admin-icon
+    margin-left: 9px
+    margin-top: 20px
+    color: lighten($info, 15)
+  i.expand
+    margin-left: 7px
+    margin-bottom: 2px
+    color: lighten($info, 10)
     cursor: pointer
   i.yellow
     color: $yellow
   i.red
     color: $danger
+  i.user-icon
+    margin-left: 13px
+    margin-top: 19px
+    color: lighten($info, 10)
   span.icon.admin
     cursor: pointer
   table

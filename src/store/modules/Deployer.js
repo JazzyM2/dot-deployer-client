@@ -1,5 +1,6 @@
 import backend from '../backend'
 import firebase from 'firebase'
+import Vue from 'vue'
 
 import {
   ownerId,
@@ -21,10 +22,14 @@ const state = {
   installs: {},
   repositories: {},
   metadata: {},
-  releases: {}
+  releases: {},
+  githubTrigger: 0
 }
 
 const mutations = {
+  incrementGithubTrigger(state) {
+    state.githubTrigger = state.githubTrigger + 1
+  },
   setComputerId(state, computerId) {
     state.computerId = computerId
   },
@@ -50,7 +55,8 @@ const mutations = {
     state.metadata = metadata
   },
   setReleases(state, payload) {
-    state.releases[payload.name] = payload.releases
+    Vue.set(state.releases, payload.name, payload.releases)
+    // state.releases[payload.name] = payload.releases
   }
 }
 
@@ -139,6 +145,41 @@ const actions = {
       })
     })
   },
+  updateRepoPermissions: (context, payload) => {
+    return new Promise((resolve, reject) => {
+      let user = payload.user
+      let metadata = _.cloneDeep(payload.metadata)
+      if (!Array.isArray(metadata.users)) {
+        metadata.users = []
+      }
+      if (_.includes(metadata.users, user)) {
+        _.remove(metadata.users, (u) => {
+          return u === user
+        })
+      } else {
+        metadata.users.push(user)
+      }
+      firebase.database().ref(`repositories/${metadata.key}/users`).set(metadata.users).then(() => {
+        resolve()
+      }).catch((error) => {
+        reject(error)
+      })
+    })
+  },
+  updateRepoName: (context, payload) => {
+    return new Promise((resolve, reject) => {
+      let key = payload.key // metadata key
+      let data = {
+        // metadata new name
+        name: payload.name
+      }
+      firebase.database().ref(`repositories/${key}`).update(data).then(() => {
+        resolve()
+      }).catch((error) => {
+        reject(error)
+      })
+    })
+  },
   removeInstall: (context, repo) => {
     return new Promise((resolve) => {
       let computerId = context.state.computerId
@@ -158,13 +199,16 @@ const actions = {
     const identity = ownerId(repository)
     const identityName = ownerName(repository)
     return new Promise((resolve, reject) => {
-      backend.getReleases(identityName).then(
-        response => resolve(context.commit('setReleases', {
+      backend.getReleases(identityName).then((response) => {
+        context.commit('setReleases', {
           name: identity,
           releases: response
-        })),
-        error => reject(error)
-      )
+        })
+        context.commit('incrementGithubTrigger')
+        resolve()
+      }).catch((error) => {
+        reject(error)
+      })
     })
   },
   validate: (context, deployerData) => {
