@@ -4,119 +4,74 @@
       <div class="column is-7">
         <div class="field has-addons">
           <div class="control">
-            <input
+            <b-autocomplete
+              :keep-first="true"
+              :clear-on-select="true"
+              size="is-small"
+              type="is-dark"
               v-model="investigate"
-              class="input is-small is-info"
-              type="text"
-              :placeholder="`search ${installs.length} users...`"
-            >
+              :data="filteredInstallsArray()"
+              :placeholder="`search ${installs.length} computers...`"
+              icon-pack="fa"
+              icon="user"
+              @select="user => showUserInstalls(user)"
+            ></b-autocomplete>
           </div>
         </div>
-        <table class="table is-striped is-narrow is-hoverable">
-          <tbody>
-            <tr
-              v-for="(install, index) in searchedInstalls"
-              :key="install.key"
-              @mouseover="installClicked = searchedInstalls[index]"
-              @mouseleave="installClicked = null"
-            >
-              <td>{{ install.key }}</td>
-              <td>
-                {{ install.user }}
-                <i>({{ Object.keys(install.installs).length }})</i>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
       <div class="column admin">
         <!-- ADMIN TABLE -->
         <div v-if="installClicked == null">
           <div class="field has-addons animated fadeIn">
             <div class="control">
-              <input
+              <b-autocomplete
+                :keep-first="true"
+                :clear-on-select="true"
+                size="is-small"
+                type="is-dark"
                 v-model="search"
-                class="input is-small is-info"
-                type="text"
-                :placeholder="`search ${admins.length} developers...`"
-              >
-            </div>
-            <div class="control">
-              <button class="button is-primary is-small is-outlined" @click="launchModal()">Add</button>
+                :data="filteredUsersArray()"
+                :placeholder="`search ${users.length} users...`"
+                icon-pack="fa"
+                icon="user"
+                @select="user => toggleUserPermissions(user)"
+              ></b-autocomplete>
             </div>
           </div>
-          <table class="table is-striped is-narrow is-hoverable animated fadeIn">
-            <tbody>
-              <tr
-                v-for="(admin, index) in searchedAdmins"
-                @mouseover="hoveredAdmin = index"
-                @mouseleave="hoveredAdmin = null"
-                :key="index"
-              >
-                <td>{{ admin.email }}</td>
-                <button
-                  v-if="hoveredAdmin === index"
-                  class="editadmin animated fadeIn is-outlined is-small button is-danger"
-                  @click="deleteAdmin(admin)"
-                >Remove</button>
-              </tr>
-            </tbody>
-          </table>
         </div>
         <!-- ADMIN TABLE -->
-        <div class="notification animated fadeIn is-white" v-else>
+        <div
+          @mouseover="installClicked = null"
+          class="notification animated fadeIn is-white"
+          v-else
+        >
           <div class="control" v-for="(value, key) in installClicked.installs" :key="key">
             <div class="tags has-addons is-left">
-              <span class="animated fadeIn tag is-dark">{{ key }}</span>
+              <span class="animated fadeIn tag is-dark">{{ findRepoFromKey(key) }}</span>
               <span class="animated fadeIn tag is-primary">{{ value.tag }}</span>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <!-- MODAL CARD -->
-    <div v-if="modalActive" class="modal is-active animated fadeIn">
-      <div class="modal-background" @click="closeModal()"></div>
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Add Developer</p>
-        </header>
-        <section class="modal-card-body">
-          <div class="field">
-            <label class="label">Email</label>
-            <div class="control">
-              <input
-                ref="searchBox"
-                v-model="input"
-                class="input is-info is-small"
-                type="text"
-                placeholder="jon.doe@wework.com"
-              >
-            </div>
-          </div>
-        </section>
-        <footer class="modal-card-foot">
-          <button
-            :class="{'is-outlined': true, 'button': true, 'is-success': true, 'is-loading': saving, 'is-small': true}"
-            @click="addAdmin()"
-          >Save</button>
-          <button class="button is-outlined is-danger is-small" @click="closeModal()">Cancel</button>
-        </footer>
-      </div>
-    </div>
-    <!-- MODAL CARD -->
   </div>
 </template>
 
 <script>
 import { flattenObject } from "../helpers.js";
 const _ = require("lodash");
+const firebase = require("firebase");
 
 export default {
-  name: "Developers",
+  name: "Admin",
+  mounted() {
+    // this bit of code allows for hot reload to work when on install tab
+    if (!this.userEmail) {
+      this.$router.push("/");
+    }
+  },
   data() {
     return {
-      modalActive: false,
       input: "",
       search: "",
       investigate: "",
@@ -126,53 +81,65 @@ export default {
     };
   },
   methods: {
-    rowClicked(index) {
-      this.installClicked = this.installs[index];
-    },
-    launchModal() {
-      this.modalActive = true;
-      this.$nextTick(() => {
-        this.$refs.searchBox.focus();
-      });
-    },
-    closeModal() {
-      this.modalActive = false;
-    },
-    deleteAdmin(admin) {
-      this.$store.dispatch("Deployer/deleteAdmin", admin.key);
-    },
-    addAdmin() {
-      this.saving = true;
-      if (this.input) {
-        this.$store.dispatch("Deployer/addAdmin", this.input);
+    showUserInstalls(user) {
+      if (user) {
+        this.installClicked = _.find(this.installs, install => {
+          if (install.user == user) {
+            return install;
+          }
+        });
       }
-      this.doneSaving();
     },
-    doneSaving() {
-      this.saving = false;
-      this.closeModal();
-      this.input = "";
+    toggleUserPermissions(user) {
+      if (user) {
+        console.log(user);
+      }
+    },
+    filteredUsersArray() {
+      return _.map(this.users, "name");
+    },
+    filteredInstallsArray() {
+      return _.map(this.installs, "user");
+    },
+    findRepoFromKey(key) {
+      let repo = _.find(this.metadata, obj => {
+        if (obj.id == key) {
+          return obj;
+        }
+      });
+      if (repo) {
+        return repo.name;
+      } else {
+        return "";
+      }
     }
   },
   computed: {
-    admins() {
-      return flattenObject(this.$store.state.Deployer.admins);
+    userEmail() {
+      let user = firebase.auth().currentUser;
+      return user ? firebase.auth().currentUser.email : null;
     },
-    searchedAdmins() {
+    users() {
+      return flattenObject(this.$store.state.Deployer.users);
+    },
+    searchedUsers() {
       if (!this.search) {
-        return this.admins;
+        return this.users;
       } else {
-        let returnAdmins = [];
-        _.forEach(this.admins, admin => {
-          if (admin.email.includes(this.search)) {
-            returnAdmins.push(admin);
+        let returnedUsers = [];
+        _.forEach(this.users, user => {
+          if (user.name.toLowerCase().includes(this.search)) {
+            returnedUsers.push(user);
           }
         });
-        return returnAdmins;
+        return returnedUsers;
       }
     },
     installs() {
       return flattenObject(this.$store.state.Deployer.installs);
+    },
+    metadata() {
+      return flattenObject(this.$store.state.Deployer.metadata);
     },
     searchedInstalls() {
       if (this.investigate) {
@@ -203,10 +170,10 @@ export default {
   div.admin
     margin-left: 8px
     font-family: $font-stack
-  button.editadmin
-    height: 15px
-    padding: 4px
-    padding-top: 2px
+  // button.editadmin
+  //   height: 15px
+  //   padding: 4px
+  //   padding-top: 2px
   table
     font-size: 14px
   span.icon
