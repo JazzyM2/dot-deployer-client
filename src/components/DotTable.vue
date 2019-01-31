@@ -4,19 +4,13 @@
       <tbody v-for="(repository, index) in source" :key="index">
         <tr>
           <td @click="toggleRepoInsights(repository)" class="insights">
-            <span class="icon">
+            <span class="icon animated fadeIn">
               <i
                 v-if="repoToggles[repository.id] == true"
-                class="expand fa fa-caret-up"
+                class="expand fa fa-chevron-up"
                 aria-hidden="true"
-                @click="toggleRepoInsights(repository)"
               ></i>
-              <i
-                v-else
-                class="expand fa fa-caret-down"
-                aria-hidden="true"
-                @click="toggleRepoInsights(repository)"
-              ></i>
+              <i v-else class="expand fa fa-chevron-down" aria-hidden="true"></i>
             </span>
           </td>
           <td @click="toggleRepoInsights(repository)" class="tool">
@@ -49,26 +43,72 @@
             >Uninstall</button>
           </td>
         </tr>
-        <tr v-if="repoToggles[repository.id] == true" class="animated fadeIn">
+        <tr v-if="repoToggles[repository.id] == true" class="user-panel animated fadeIn">
           <td></td>
           <td>
-            <b-tooltip
-              v-if="isAdmin"
-              :active="formInput.hasOwnProperty(repository.id)"
-              size="is-small"
-              label="Press Enter To Update"
-              position="is-bottom"
-              type="is-white"
-            >
+            <span>
+              <label class="label is-light is-small">name</label>
+              <input class="input is-info is-small">
+            </span>
+          </td>
+          <td>
+            <span>
+              <label class="label is-light is-small">Users</label>
+              <b-field v-if="matchMetadataWithGithubRepository(repository)" grouped group-multiline>
+                <div
+                  v-for="(user, index) in matchMetadataWithGithubRepository(repository).users"
+                  :key="repository.id + index"
+                  class="control"
+                >
+                  <b-tag
+                    @close="toggleUserPermissions(user, repository)"
+                    type="is-primary"
+                    attached
+                    :closable="isAdmin"
+                  >{{ user }}</b-tag>
+                </div>
+              </b-field>
+            </span>
+          </td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr
+          v-if="repoToggles[repository.id] == true && isAdmin"
+          class="admin-panel animated fadeIn"
+        >
+          <td>
+            <i class="admin-icon fa fa-lock" aria-hidden="true"></i>
+          </td>
+          <td>
+            <span>
+              <label class="tool label is-light is-small">Tool Name</label>
               <input
                 class="input is-info is-small"
                 :placeholder="getRepositoryName(repository)"
-                v-model="formInput[repository.id]"
+                v-model="formName[repository.id]"
                 @keyup.enter="editRepoName(repository)"
               >
-            </b-tooltip>
+            </span>
           </td>
-          <td></td>
+          <td>
+            <span>
+              <label class="label is-light is-small">Add Users</label>
+              <b-autocomplete
+                :keep-first="true"
+                :clear-on-select="true"
+                size="is-small"
+                type="is-dark"
+                v-model="userSearch[repository.id]"
+                :data="filteredUsersArray(repository)"
+                placeholder="search users or user groups..."
+                icon-pack="fa"
+                icon="user"
+                @select="user => toggleUserPermissions(user, repository)"
+              ></b-autocomplete>
+            </span>
+          </td>
           <td></td>
           <td></td>
           <td></td>
@@ -99,9 +139,9 @@ export default {
   name: "DotTable",
   data() {
     return {
-      confirm: false,
       repoToggles: {},
-      formInput: {}
+      formName: {},
+      userSearch: {}
     };
   },
   components: {
@@ -110,12 +150,29 @@ export default {
   mounted() {
     this.checkForUpdates();
   },
-  props: ["source", "admin"],
+  props: ["source"],
   methods: {
-    getRepositoryName(repository) {
-      let metadata = _.find(this.metadata, obj => {
+    matchMetadataWithGithubRepository(repository) {
+      return _.find(this.metadata, obj => {
         return obj.id == repository.id;
       });
+    },
+    toggleUserPermissions(userOrGroup, repository) {
+      let metadata = this.matchMetadataWithGithubRepository(repository);
+      if (!userOrGroup || !metadata) {
+        return;
+      }
+      let payload = {};
+      payload.metadata = metadata;
+      payload.user = userOrGroup;
+      this.$store
+        .dispatch("Deployer/updateRepoPermissions", payload)
+        .catch(error => {
+          this.flashMessage(error, true);
+        });
+    },
+    getRepositoryName(repository) {
+      let metadata = this.matchMetadataWithGithubRepository(repository);
       if (metadata) {
         return metadata.name; // metadata automatically piped with github name on creation
       } else {
@@ -124,17 +181,15 @@ export default {
     },
     editRepoName(repository) {
       let payload = {};
-      let metadata = _.find(this.metadata, obj => {
-        return obj.id == repository.id;
-      });
+      let metadata = this.matchMetadataWithGithubRepository(repository);
       payload.key = metadata.key;
-      payload.name = this.formInput[repository.id];
+      payload.name = this.formName[repository.id];
       // make sure user has entered something
       if (payload.name) {
         this.$store
           .dispatch("Deployer/updateRepoName", payload)
           .then(() => {
-            delete this.formInput[repository.id];
+            delete this.formName[repository.id];
             this.$forceUpdate();
           })
           .catch(error => {
@@ -585,9 +640,39 @@ export default {
     handleInstallError(error) {
       this.stopDeploying();
       this.flashMessage(error, true);
+    },
+    filteredUsersArray(repository) {
+      let result = [];
+      if (this.userSearch[repository.id]) {
+        result = this.userNames.filter(option => {
+          return (
+            option
+              .toString()
+              .toLowerCase()
+              .indexOf(this.userSearch[repository.id].toLowerCase()) >= 0
+          );
+        });
+      } else {
+        result = this.userNames;
+      }
+      result = result.concat(this.userRoles);
+      let metadata = this.matchMetadataWithGithubRepository(repository);
+      if (metadata && metadata.users)
+        _.remove(result, r => {
+          return metadata.users.includes(r);
+        });
+      return result;
     }
   },
   computed: {
+    userRoles() {
+      let flattenedUsers = flattenObject(this.users);
+      return _.uniq(_.map(flattenedUsers, "role"));
+    },
+    userNames() {
+      let flattenedUsers = flattenObject(this.users);
+      return _.map(flattenedUsers, "name");
+    },
     computerId() {
       return this.$store.state.Deployer.computerId;
     },
@@ -637,18 +722,17 @@ export default {
     cursor: pointer
   td.description
     cursor: pointer
-  //   width: 250px
-  // td.version
-  //   width: 40px
-  // td.action:not(:last-child)
-  //   padding-left: 4px
-  //   padding-right: 4px
-  // button.is-rounded
-  //   height: 18px
-  // button.uninstall
-  //   margin-left: 8px
-  i.expand
+  .label
+    font-size: 2px
     color: $info
+  .admin-icon
+    margin-left: 11px
+    margin-top: 20px
+    color: lighten($info, 15)
+  i.expand
+    margin-left: 7px
+    margin-bottom: 2px
+    color: lighten($info, 10)
     cursor: pointer
   i.yellow
     color: $yellow

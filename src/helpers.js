@@ -13,9 +13,8 @@ const ownerName = (repository) => {
 }
 const flattenObject = (object) => {
   let flattenedObjs = _.toPairs(object).map((obj) => {
-    let flattenedObj = obj[1]
-    flattenedObj.key = obj[0]
-    return flattenedObj
+    obj[1].key = obj[0]
+    return obj[1]
   })
   return flattenedObjs
 }

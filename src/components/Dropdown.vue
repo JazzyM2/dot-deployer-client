@@ -56,7 +56,8 @@ export default {
     },
     menu() {
       let menu = [];
-      _.forEach(this.releases[ownerId(this.repository)], release => {
+      let releases = this.releases[ownerId(this.repository)];
+      _.forEach(releases, release => {
         let tag = release.tag_name;
         let description = release.body;
         let id = release.id;

@@ -145,6 +145,27 @@ const actions = {
       })
     })
   },
+  updateRepoPermissions: (context, payload) => {
+    return new Promise((resolve, reject) => {
+      let user = payload.user
+      let metadata = _.cloneDeep(payload.metadata)
+      if (!Array.isArray(metadata.users)) {
+        metadata.users = []
+      }
+      if (_.includes(metadata.users, user)) {
+        _.remove(metadata.users, (u) => {
+          return u === user
+        })
+      } else {
+        metadata.users.push(user)
+      }
+      firebase.database().ref(`repositories/${metadata.key}/users`).set(metadata.users).then(() => {
+        resolve()
+      }).catch((error) => {
+        reject(error)
+      })
+    })
+  },
   updateRepoName: (context, payload) => {
     return new Promise((resolve, reject) => {
       let key = payload.key // metadata key
