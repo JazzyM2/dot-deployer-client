@@ -44,11 +44,22 @@
           </td>
         </tr>
         <tr v-if="repoToggles[repository.id] == true" class="user-panel animated fadeIn">
-          <td></td>
+          <td>
+            <i class="user-icon fa fa-info" aria-hidden="true"></i>
+          </td>
           <td>
             <span>
-              <label class="label is-light is-small">name</label>
-              <input class="input is-info is-small">
+              <label class="label is-light is-small">Information</label>
+              <b-taglist attached>
+                <b-tag type="is-white">Issues</b-tag>
+                <b-tag type="is-grey">
+                  <b>{{ repository.open_issues }}</b>
+                </b-tag>&nbsp;&nbsp;
+                <b-tag type="is-white">Releases</b-tag>
+                <b-tag type="is-grey">
+                  <b>{{ getReleasesCount(repository) }}</b>
+                </b-tag>
+              </b-taglist>
             </span>
           </td>
           <td>
@@ -62,7 +73,7 @@
                 >
                   <b-tag
                     @close="toggleUserPermissions(user, repository)"
-                    type="is-primary"
+                    type="is-white"
                     attached
                     :closable="isAdmin"
                   >{{ user }}</b-tag>
@@ -76,14 +87,14 @@
         </tr>
         <tr
           v-if="repoToggles[repository.id] == true && isAdmin"
-          class="admin-panel animated fadeIn"
+          class="admin-panel animated fadeIn is-hovered"
         >
           <td>
-            <i class="admin-icon fa fa-lock" aria-hidden="true"></i>
+            <i class="admin-icon fa fa-cog" aria-hidden="true"></i>
           </td>
           <td>
             <span>
-              <label class="tool label is-light is-small">Tool Name</label>
+              <label class="details tool label is-light is-small">Edit Name</label>
               <input
                 class="input is-info is-small"
                 :placeholder="getRepositoryName(repository)"
@@ -94,7 +105,7 @@
           </td>
           <td>
             <span>
-              <label class="label is-light is-small">Add Users</label>
+              <label class="details label is-light is-small">Add Users</label>
               <b-autocomplete
                 :keep-first="true"
                 :clear-on-select="true"
@@ -102,7 +113,7 @@
                 type="is-dark"
                 v-model="userSearch[repository.id]"
                 :data="filteredUsersArray(repository)"
-                placeholder="search users or user groups..."
+                placeholder="search users or roles..."
                 icon-pack="fa"
                 icon="user"
                 @select="user => toggleUserPermissions(user, repository)"
@@ -152,6 +163,15 @@ export default {
   },
   props: ["source"],
   methods: {
+    getReleasesCount(repository) {
+      let identity = ownerId(repository);
+      let releases = this.releases[identity];
+      if (releases) {
+        return releases.length;
+      } else {
+        return 0;
+      }
+    },
     matchMetadataWithGithubRepository(repository) {
       return _.find(this.metadata, obj => {
         return obj.id == repository.id;
@@ -726,7 +746,7 @@ export default {
     font-size: 2px
     color: $info
   .admin-icon
-    margin-left: 11px
+    margin-left: 9px
     margin-top: 20px
     color: lighten($info, 15)
   i.expand
@@ -738,6 +758,10 @@ export default {
     color: $yellow
   i.red
     color: $danger
+  i.user-icon
+    margin-left: 13px
+    margin-top: 19px
+    color: lighten($info, 10)
   span.icon.admin
     cursor: pointer
   table
