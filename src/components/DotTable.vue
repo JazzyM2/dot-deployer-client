@@ -1,6 +1,6 @@
 <template>
   <div>
-    <table class="table is-narrow is-striped is-hoverable is-fullwidth animated fadeIn">
+    <table class="table is-narrow is-fullwidth animated fadeIn">
       <tbody v-for="(repository, index) in source" :key="index">
         <tr>
           <td @click="toggleRepoInsights(repository)" class="insights">
@@ -45,11 +45,11 @@
         </tr>
         <tr v-if="repoToggles[repository.id] == true" class="user-panel animated fadeIn">
           <td>
-            <i class="user-icon fa fa-info" aria-hidden="true"></i>
+            <!-- <i class="user-icon fa fa-info" aria-hidden="true"></i> -->
           </td>
           <td>
             <span>
-              <label class="label is-light is-small">Information</label>
+              <label class="label is-small">Information</label>
               <b-taglist attached>
                 <b-tag type="is-white">Issues</b-tag>
                 <b-tag type="is-grey">
@@ -64,7 +64,7 @@
           </td>
           <td>
             <span>
-              <label class="label is-light is-small">Users</label>
+              <label class="label is-small">Users</label>
               <b-field v-if="matchMetadataWithGithubRepository(repository)" grouped group-multiline>
                 <div
                   v-for="(user, index) in matchMetadataWithGithubRepository(repository).users"
@@ -90,11 +90,11 @@
           class="admin-panel animated fadeIn is-hovered"
         >
           <td>
-            <i class="admin-icon fa fa-cog" aria-hidden="true"></i>
+            <!-- <i class="admin-icon fa fa-cog" aria-hidden="true"></i> -->
           </td>
           <td>
             <span>
-              <label class="details tool label is-light is-small">Edit Name</label>
+              <label class="details tool label is-small">Edit Name</label>
               <input
                 class="input is-info is-small"
                 :placeholder="getRepositoryName(repository)"
@@ -105,12 +105,11 @@
           </td>
           <td>
             <span>
-              <label class="details label is-light is-small">Add Users</label>
+              <label class="details label is-small">Add Users</label>
               <b-autocomplete
                 :keep-first="true"
                 :clear-on-select="true"
                 size="is-small"
-                type="is-dark"
                 v-model="userSearch[repository.id]"
                 :data="filteredUsersArray(repository)"
                 placeholder="search users or roles..."
@@ -734,6 +733,10 @@ export default {
 </script>
 
 <style lang="sass" scoped>
+  tr.admin-panel
+    background: lighten($info, 24)
+  tr.user-panel
+    background: lighten($info, 24)
   td.insights
     width: 20px
     cursor: pointer
@@ -744,11 +747,11 @@ export default {
     cursor: pointer
   .label
     font-size: 2px
-    color: $info
-  .admin-icon
-    margin-left: 9px
-    margin-top: 20px
-    color: lighten($info, 15)
+    color: darken($white, 25)
+  // .admin-icon
+  //   margin-left: 9px
+  //   margin-top: 20px
+  //   color: $white
   i.expand
     margin-left: 7px
     margin-bottom: 2px
@@ -758,10 +761,10 @@ export default {
     color: $yellow
   i.red
     color: $danger
-  i.user-icon
-    margin-left: 13px
-    margin-top: 19px
-    color: lighten($info, 10)
+  // i.user-icon
+  //   margin-left: 13px
+  //   margin-top: 19px
+  //   color: $white
   span.icon.admin
     cursor: pointer
   table

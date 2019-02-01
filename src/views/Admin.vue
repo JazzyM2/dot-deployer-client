@@ -1,64 +1,101 @@
 <template>
   <div class="admin animated fadeIn">
     <div class="columns">
-      <div class="column is-7">
+      <div class="computers column is-6">
         <div class="field has-addons">
           <div class="control">
-            <b-autocomplete
-              :keep-first="true"
-              :clear-on-select="true"
-              size="is-small"
-              type="is-dark"
-              v-model="investigate"
-              :data="filteredInstallsArray()"
-              :placeholder="`search ${installs.length} computers...`"
-              icon-pack="fa"
-              icon="user"
-              @select="user => showUserInstalls(user)"
-            ></b-autocomplete>
-          </div>
-        </div>
-      </div>
-      <div class="column admin">
-        <!-- ADMIN TABLE -->
-        <div v-if="installClicked == null">
-          <div class="field has-addons animated fadeIn">
-            <div class="control">
+            <span>
+              <label class="label is-small">Computers</label>
               <b-autocomplete
+                class="autocomplete"
+                expanded
+                name="computers"
+                :open-on-focus="true"
                 :keep-first="true"
                 :clear-on-select="true"
                 size="is-small"
-                type="is-dark"
-                v-model="search"
+                v-model="computerSearch"
+                :data="filteredInstallsArray()"
+                :placeholder="`search ${installs.length} computers...`"
+                icon-pack="fa"
+                icon="user"
+                @select="user => showComputerInstalls(user)"
+              ></b-autocomplete>
+            </span>
+            <span>
+              <label class="label is-small">Users</label>
+              <b-autocomplete
+                class="autocomplete"
+                :open-on-focus="true"
+                :keep-first="true"
+                :clear-on-select="true"
+                size="is-small"
+                expanded
+                v-model="userSearch"
+                name="user-roles"
                 :data="filteredUsersArray()"
                 :placeholder="`search ${users.length} users...`"
                 icon-pack="fa"
                 icon="user"
                 @select="user => toggleUserPermissions(user)"
               ></b-autocomplete>
-            </div>
+            </span>
           </div>
         </div>
-        <!-- ADMIN TABLE -->
-        <div
-          @mouseover="installClicked = null"
-          class="notification animated fadeIn is-white"
-          v-else
-        >
-          <div class="control" v-for="(value, key) in installClicked.installs" :key="key">
+      </div>
+      <!-- COMPUTER INSTALLS PANEL -->
+      <div v-if="computerSelected != null" class="column admin animated fadeIn">
+        <label class="label install-info is-small">Installed Tools</label>
+        <div class="notification is-white">
+          <div
+            class="installed-tools control"
+            v-for="(value, key) in computerSelected.installs"
+            :key="key"
+          >
             <div class="tags has-addons is-left">
               <span class="animated fadeIn tag is-dark">{{ findRepoFromKey(key) }}</span>
-              <span class="animated fadeIn tag is-primary">{{ value.tag }}</span>
+              <span
+                :class="{'animated': true, 'fadeIn': true, 'tag': true, 'is-warning': isInstalledPreRelease(key, value.tag), 'is-primary': !isInstalledPreRelease(key, value.tag)}"
+              >
+                <b>{{ value.tag }}</b>
+              </span>
             </div>
           </div>
         </div>
       </div>
+      <!-- COMPUTER INSTALLS PANEL -->
+      <!-- USER ROLES PANEL -->
+      <div class="user-role-panel" v-if="userSelected != null">
+        <span>
+          <label class="user-info label is-small">User Information</label>
+          <div class="user-info">
+            <span class="animated fadeIn tag is-dark">{{ currentUser.name }}</span>
+            <span class="animated fadeIn tag is-primary">{{ currentUser.role }}</span>
+          </div>
+          <div @keyup.enter="updateUserRole(roleSearch)">
+            <b-autocomplete
+              :open-on-focus="true"
+              :clear-on-select="true"
+              size="is-small"
+              expanded
+              v-model="roleSearch"
+              name="user-roles"
+              :data="userRoles"
+              :placeholder="`add role or search ${userRoles.length} existing roles`"
+              icon-pack="fa"
+              icon="user"
+              @select="role => updateUserRole(role)"
+            ></b-autocomplete>
+          </div>
+        </span>
+      </div>
+      <!-- USER ROLES PANEL -->
     </div>
   </div>
 </template>
 
 <script>
-import { flattenObject } from "../helpers.js";
+import { flattenObject, ownerId } from "../helpers.js";
 const _ = require("lodash");
 const firebase = require("firebase");
 
@@ -72,27 +109,72 @@ export default {
   },
   data() {
     return {
-      input: "",
-      search: "",
-      investigate: "",
-      saving: false,
-      hoveredAdmin: null,
-      installClicked: null
+      computerSearch: "",
+      userSearch: "",
+      roleSearch: "",
+      computerSelected: null,
+      userSelected: null
     };
   },
   methods: {
-    showUserInstalls(user) {
+    flashMessage(message, error) {
+      console.log("Flashing Message: ", message);
+      let type;
+      let newMessage;
+      error == true ? (type = "is-danger") : (type = "is-success");
+      message.message == null
+        ? (newMessage = message.toString())
+        : (newMessage = message.message.toString());
+      this.$toast.open({
+        message: newMessage,
+        position: "is-bottom",
+        type: type,
+        duration: 2500
+      });
+    },
+    updateUserRole(role) {
+      if (!role) {
+        return;
+      }
+      console.log("Pushing Up User Role: ", role);
+      let user = _.find(this.users, {
+        name: this.userSelected
+      });
+      let action = this.$store.dispatch("Deployer/updateUserRole", {
+        key: user.key,
+        role: role
+      });
+      action
+        .then(() => {
+          this.roleSearch = "";
+        })
+        .catch(error => {
+          this.flashMessge(error, true);
+        });
+    },
+    isInstalledPreRelease(repoId, tag) {
+      // get repoName from repoid
+      let repo = _.find(this.repositories, {
+        id: parseInt(repoId)
+      });
+      let identity = ownerId(repo);
+      let installed = _.find(this.releases[identity], {
+        tag_name: tag
+      });
+      return installed.prerelease;
+    },
+    showComputerInstalls(user) {
+      this.userSelected = null;
       if (user) {
-        this.installClicked = _.find(this.installs, install => {
-          if (install.user == user) {
-            return install;
-          }
+        this.computerSelected = _.find(this.installs, {
+          user: user
         });
       }
     },
     toggleUserPermissions(user) {
       if (user) {
-        console.log(user);
+        this.userSelected = user;
+        this.computerSelected = null;
       }
     },
     filteredUsersArray() {
@@ -102,19 +184,21 @@ export default {
       return _.map(this.installs, "user");
     },
     findRepoFromKey(key) {
-      let repo = _.find(this.metadata, obj => {
-        if (obj.id == key) {
-          return obj;
-        }
+      let repo = _.find(this.repositories, {
+        id: parseInt(key)
       });
-      if (repo) {
-        return repo.name;
-      } else {
-        return "";
-      }
+      return repo.name;
     }
   },
   computed: {
+    currentUser() {
+      return _.find(this.users, {
+        email: this.userEmail
+      });
+    },
+    userRoles() {
+      return _.uniq(_.map(this.users, "role"));
+    },
     userEmail() {
       let user = firebase.auth().currentUser;
       return user ? firebase.auth().currentUser.email : null;
@@ -123,12 +207,12 @@ export default {
       return flattenObject(this.$store.state.Deployer.users);
     },
     searchedUsers() {
-      if (!this.search) {
+      if (!this.userSearch) {
         return this.users;
       } else {
         let returnedUsers = [];
         _.forEach(this.users, user => {
-          if (user.name.toLowerCase().includes(this.search)) {
+          if (user.name.toLowerCase().includes(this.userSearch.toLowerCase())) {
             returnedUsers.push(user);
           }
         });
@@ -141,10 +225,16 @@ export default {
     metadata() {
       return flattenObject(this.$store.state.Deployer.metadata);
     },
+    repositories() {
+      return this.$store.state.Deployer.repositories.repositories;
+    },
+    releases() {
+      return this.$store.state.Deployer.releases;
+    },
     searchedInstalls() {
-      if (this.investigate) {
+      if (this.computerSearch) {
         return _.filter(this.installs, install => {
-          let s = this.investigate.toLowerCase();
+          let s = this.computerSearch.toLowerCase();
           return install.user.toLowerCase().includes(s);
         });
       } else {
@@ -159,32 +249,27 @@ export default {
 </script>
 
 <style lang="sass" scoped>
-  div.column.admin
-    margin-left: -40px
-  div.notification
-    position: fixed
+  div.user-role-panel
+    margin-top: 24px
+    margin-left: 20px
+  div.installed-tools
+    margin-bottom: 2px
+  div.user-info
+    margin-top: 4px
+    margin-bottom: 22px
   span.tag
     font-size: 14px
-  input.input
-    width: 250px
-  div.admin
-    margin-left: 8px
-    font-family: $font-stack
-  // button.editadmin
-  //   height: 15px
-  //   padding: 4px
-  //   padding-top: 2px
-  table
-    font-size: 14px
-  span.icon
-    cursor: pointer
-  i.danger
-    color: $danger
-  i.trash
-    color: $warning
-  i.add 
-    color: $primary
-  i.expand 
-    color: $info
-    cursor: pointer
+  div.computers
+    margin-left: 5px
+  .autocomplete
+    width: 340px
+  .input
+    color: $dark
+  label.install-info
+    margin-left: 16px
+  label.user-info
+    margin-left: 10px
+    margin-top: -11px
+  .notification
+    padding: 8px
 </style>
