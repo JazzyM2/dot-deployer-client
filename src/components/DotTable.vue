@@ -17,7 +17,7 @@
             <p class="download-title">{{ getRepositoryName(repository) | chopString(30) }}</p>
           </td>
           <td @click="toggleRepoInsights(repository)" class="description">
-            <p class="download-description">{{ repository.description | chopString(50) }}</p>
+            <p class="download-description">{{ repository.description | chopString(47) }}</p>
           </td>
           <td class="version">
             <button
