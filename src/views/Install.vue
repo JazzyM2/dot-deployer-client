@@ -24,33 +24,6 @@
       </div>
     </div>
     <!-- LOADING SCREEN -->
-    <!-- DOWNLOAD INSIGHTS -->
-    <div v-if="modalActive" class="modal is-active animated fadeIn">
-      <div class="modal-background" @click="closeModal()"></div>
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">{{ downloadSelected.name | capitalize }}</p>
-        </header>
-        <div class="modal-card-body">
-          <div class="tags has-addons">
-            <span class="tag is-dark">Documentation</span>
-            <span class="tag is-light">
-              <a @click="launchUrl(getUrl('documentation'))">{{ getUrl('documentation') }}</a>
-            </span>
-          </div>
-          <div class="tags has-addons">
-            <span class="tag is-danger">Support</span>
-            <span class="tag is-light">
-              <a @click="launchUrl(getUrl('support'))">{{ getUrl('support') }}</a>
-            </span>
-          </div>
-        </div>
-        <footer class="modal-card-foot">
-          <button class="button is-small is-outlined is-dark" @click="closeModal()">Close</button>
-        </footer>
-      </div>
-    </div>
-    <!-- DOWNLOAD INSIGHTS -->
   </div>
 </template>
 
@@ -99,15 +72,6 @@ export default {
     }
   },
   computed: {
-    downloadSelected() {
-      return this.$store.state.Deployer.downloadSelected;
-    },
-    modalActive() {
-      return this.$store.state.Deployer.modalActive;
-    },
-    message() {
-      return this.$store.state.Deployer.message;
-    },
     deploying() {
       return this.$store.state.Deployer.deploying;
     },

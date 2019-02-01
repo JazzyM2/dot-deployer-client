@@ -17,7 +17,6 @@ const state = {
   supports: ['3.0.0'],
   deploying: false,
   progress: null,
-  modalActive: false,
   users: {},
   installs: {},
   repositories: {},
@@ -164,6 +163,18 @@ const actions = {
       }).catch((error) => {
         reject(error)
       })
+    })
+  },
+  updateUserRole: (context, payload) => {
+    return new Promise((resolve, reject) => {
+      let role = payload.role
+      let key = payload.key
+      firebase.database().ref(`users/${key}/role`).set(role).then(() => {
+        resolve()
+      }).catch((error) => {
+        reject(error)
+      })
+
     })
   },
   updateRepoName: (context, payload) => {
