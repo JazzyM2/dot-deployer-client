@@ -7,14 +7,15 @@
 
 [![CircleCI](https://circleci.com/gh/WeConnect/dot-deployer-client/tree/dev.svg?style=svg&circle-token=6b3b28ced522f82e3b60ce3a4d8dda727efa4576)](https://circleci.com/gh/WeConnect/dot-deployer-client) *master*
 
+# Documentation
+
+[User](documentation/user/README.md) *- for the average user*
+
+[Developer](documentation/developer/README.md) *- for the ambitious developer*
+
 # Release Notes
 
 [3.0.0](./releases/3.0.0/README.md) *- tool permissions, user roles*
 
 [2.6.0](./releases/2.6.0/README.md) *- admin panel, ui improvements*
 
-# Documentation
-
-[User](documentation/user/README.md) *- for the average user*
-
-[Developer](documentation/developer/README.md) *- for the ambitious developer*
