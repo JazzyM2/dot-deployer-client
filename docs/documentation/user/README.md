@@ -1,3 +1,5 @@
+# User Documentation
+
 ## 1. Install the Application
 *the install link is above!*
 

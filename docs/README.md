@@ -11,7 +11,9 @@
 
 [User](documentation/user/README.md) *- for the average user*
 
-[Developer](documentation/developer/README.md) *- for the ambitious developer*
+[Developer](documentation/developer/README.md) *- for the average developer*
+
+[Contributor](documentation/contributor/README.md) *- for the ambitious contributor*
 
 # Release Notes
 
