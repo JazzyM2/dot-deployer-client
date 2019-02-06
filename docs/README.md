@@ -1,4 +1,4 @@
-![logo](../src/assets/login.png)
+![logo](deployer-logo.png)
 
 # Desktop Client for Deploying Github Releases
 *Dot Deployer uses the GitHub API to make tool deployment easy and painless*
