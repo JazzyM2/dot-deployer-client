@@ -69,8 +69,8 @@
         <span>
           <label class="user-info label is-small">User Information</label>
           <div class="user-info">
-            <span class="animated fadeIn tag is-dark">{{ currentUser.name }}</span>
-            <span class="animated fadeIn tag is-primary">{{ currentUser.role }}</span>
+            <span class="animated fadeIn tag is-dark">{{ userToChangeRole.name }}</span>
+            <span class="animated fadeIn tag is-primary">{{ userToChangeRole.role }}</span>
           </div>
           <div @keyup.enter="updateUserRole(roleSearch)">
             <b-autocomplete
@@ -191,6 +191,15 @@ export default {
     }
   },
   computed: {
+    userToChangeRole() {
+      let user = {};
+      if (this.userSelected != null) {
+        user = _.find(this.users, {
+          name: this.userSelected
+        });
+      }
+      return user;
+    },
     currentUser() {
       return _.find(this.users, {
         email: this.userEmail
@@ -206,19 +215,6 @@ export default {
     users() {
       return flattenObject(this.$store.state.Deployer.users);
     },
-    searchedUsers() {
-      if (!this.userSearch) {
-        return this.users;
-      } else {
-        let returnedUsers = [];
-        _.forEach(this.users, user => {
-          if (user.name.toLowerCase().includes(this.userSearch.toLowerCase())) {
-            returnedUsers.push(user);
-          }
-        });
-        return returnedUsers;
-      }
-    },
     installs() {
       return flattenObject(this.$store.state.Deployer.installs);
     },
@@ -230,16 +226,6 @@ export default {
     },
     releases() {
       return this.$store.state.Deployer.releases;
-    },
-    searchedInstalls() {
-      if (this.computerSearch) {
-        return _.filter(this.installs, install => {
-          let s = this.computerSearch.toLowerCase();
-          return install.user.toLowerCase().includes(s);
-        });
-      } else {
-        return this.installs;
-      }
     },
     installCount() {
       return this.installs.length;
