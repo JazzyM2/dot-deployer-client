@@ -1,158 +1,25 @@
 # Developer Documentation
 
-**#1** - Add Your Repository to Deployer
+**#1** - Add Your Repository to Your Team's **GitHub Application**
 
-*give your team's Github Application access to your repository*
+- *navigate to https://github.com/organizations/[TEAM-NAME]/settings/installations/[INSTALLATION-ID] to add your repository to your team's GitHub Application*
 
-![setup-add-repo](setup.png)
+- *for example, WeWork's url is: https://github.com/organizations/WeConnect/settings/installations/543395*
 
-## 2. Add .deployer File
-*add a .deployer file in your master branch with metadata to tell the desktop client how to install your tool.  Please see below for more information on available schemas!*
+**#2** - Add A **.deployer file** To Your Repository
 
-![repository-contents](contents.png)
+- *a `.deployer` file is a JSON configuration file that tells DotDeployer how to install your repository*
+- *see [the available schemas here](../schemas/README.md).     **The latest client supports only version 3.0.0***
+- *[See examples of .deployer files on version 3.0.0](../schemas/examples.md)*
 
-## 3. Create Releases
-*Dot Deployer will see the releases in your repository and use their metadata to generate available downloads*
+**#3** - Create A **Release** in Your Repository
+- *DotDeployer uses GitHub releases to access the different versions of your repository / tool.  **If you are uploading custom assets to your release** (i.e. an .exe installer) **you must also include your .deployer file in the release!***
 
-![releases](releases.png)
+**#4** - Test Installing / Uninstalling Your Tool
+- *DotDeployer allows you to set visibility permissions to specific users or user groups*
+- *To test a release of your tool, set yourself as the only user with permission to install / uninstall the tool*
 
-## 4. Test Installing & Uninstalling
-*admins on the desktop client will see repositories that the GitHub Application is installed on, whether or not they have been released to users.  Tools available for release are marked with a **yellow rocket***
+![tool-permissions](tool-permissions.gif)
 
-![setup-test-tool](test.gif)
-
-## 5. Release to Users
-*release a tool to users by clicking the yellow rocket next to it, or, unrelease a tool by clicking the red trashcan*
-
-![administer](release.gif)
-
-## .deployer File Schemas
-***Version 3.0.0** of the .deployer Schema is documented below.  The **version** tag in your .deployer file tells Dot Deployer which schema you are using.  All assets are downloaded into the TEMP folder and then processed based on the configuration of the .deployer file*
-
-```json
-[{
-  "version": "3.0.0",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "version": {
-        "type": "string",
-        "required": true
-      },
-      "processes": {
-        "type": "array",
-        "required": false,
-        "items": {
-          "type": "object",
-          "properties": {
-            "name": {
-              "type": "string",
-              "required": true
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "urls": {
-        "type": "object",
-        "required": false,
-        "properties": {
-          "documentation": {
-            "type": "string",
-            "required": false
-          },
-          "support": {
-            "type": "string",
-            "required": false
-          },
-          "feedback": {
-            "type": "string",
-            "required": false
-          }
-        },
-        "additionalProperties": false
-      },
-      "install": {
-        "type": "array",
-        "required": true,
-        "items": {
-          "type": "object",
-          "required": true,
-          "properties": {
-            "action": {
-              "type": "string",
-              "required": true,
-              "enum": ["run", "copy"]
-            },
-            "destination": {
-              "type": "string",
-              "required": false
-            },
-            "source": {
-              "required": true,
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "uninstall": {
-        "type": "array",
-        "required": true,
-        "items": {
-          "type": "object",
-          "required": true,
-          "properties": {
-            "action": {
-              "type": "string",
-              "required": true,
-              "enum": ["run", "delete"]
-            },
-            "source": {
-              "required": true,
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "dependson": {
-        "type": "array",
-        "required": false,
-        "items": {
-          "type": "object",
-          "properties": {
-            "name": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "additionalProperties": false
-  }
-}]
-```
-
-## Examples
-***Note:** the desktop client will **validate your .deployer file** when you attempt to **install** or **uninstall** the tool, and will **identify any errors** as necessary*
-
-### Example 1: Dot Deployer
-*this .deployer file will:*
-1. run a file named **run.bat** after all assets in the release are downloaded (assets=true)
-
-***Note:** this is the .deployer file the deployer application uses to install itself.  In this case, there are two assets in the release: a **run.bat** file and an **installer.exe**.  There is a quick script in the .bat file to launch the installer: **START %TEMP%\installer.exe**.*
-
-```json
-{
-  "version": "2.0.0",
-	"autoupdate": true,
-  "assets": true,
-	"install": [
-		{
-			"action": "run",
-			"source": "run.bat"
-		}
-	]
-}
-```
+**#5** - Release to Users
+- *to release to users (or specific user groups), change the permission settings again (the default user role is "user").  Remember, **pre-releases become available to users but are not auto installed**.*
