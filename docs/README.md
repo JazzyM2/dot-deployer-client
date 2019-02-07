@@ -11,7 +11,7 @@
 
 [User](documentation/user/README.md) *- for the average user*
 
-[Developer](documentation/developer/README.md) *- for the average developer*
+[Developer](documentation/developer/README.md) *- for the determined developer*
 
 [Contributor](documentation/contributor/README.md) *- for the ambitious contributor*
 
@@ -21,3 +21,8 @@
 
 [2.6.0](./releases/2.6.0/README.md) *- admin panel, ui improvements*
 
+# Quick Links
+
+[Schemas](./documentation/schemas/README.md) *- .deployer file schemas*
+
+[Examples](./documentation/schemas/examples.md) *- examples of .deployer files*

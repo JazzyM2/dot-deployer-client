@@ -231,28 +231,4 @@
   },
   "additionalProperties": false
 }
-``` 
-
-
-## Examples
-***Note:** the desktop client will **validate your .deployer file** when you attempt to **install** or **uninstall** the tool, and will **identify any errors** as necessary*
-
-### Example 1: Dot Deployer
-*this .deployer file will:*
-1. run a file named **run.bat** after all assets in the release are downloaded (assets=true)
-
-***Note:** this is the .deployer file the deployer application uses to install itself.  In this case, there are two assets in the release: a **run.bat** file and an **installer.exe**.  There is a quick script in the .bat file to launch the installer: **START %TEMP%\installer.exe**.*
-
-```json
-{
-  "version": "2.0.0",
-	"autoupdate": true,
-  "assets": true,
-	"install": [
-		{
-			"action": "run",
-			"source": "run.bat"
-		}
-	]
-}
 ```
