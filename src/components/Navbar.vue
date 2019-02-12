@@ -113,7 +113,7 @@ export default {
     isAdmin() {
       let user = _.find(this.users, { email: this.userEmail });
       if (user != null) {
-        return user.role == "admin";
+        return user.role.includes("admin");
       } else {
         return false;
       }

@@ -53,7 +53,7 @@
             :key="key"
           >
             <div class="tags has-addons is-left">
-              <span class="animated fadeIn tag is-dark">{{ findRepoFromKey(key) }}</span>
+              <span class="animated fadeIn tag is-dark">{{ findMetadataFromkey(key) }}</span>
               <span
                 :class="{'animated': true, 'fadeIn': true, 'tag': true, 'is-warning': isInstalledPreRelease(key, value.tag), 'is-primary': !isInstalledPreRelease(key, value.tag)}"
               >
@@ -70,9 +70,17 @@
           <label class="user-info label is-small">User Information</label>
           <div class="user-info">
             <span class="animated fadeIn tag is-dark">{{ userToChangeRole.name }}</span>
-            <span class="animated fadeIn tag is-primary">{{ userToChangeRole.role }}</span>
           </div>
-          <div @keyup.enter="updateUserRole(roleSearch)">
+          <b-tag
+            class="user-role-tag"
+            v-for="role in userToChangeRole.role"
+            :key="role"
+            @close="removeUserRole(role)"
+            type="is-primary"
+            attached
+            :closable="true"
+          >{{ role }}</b-tag>
+          <div @keyup.enter="addUserRole(roleSearch)">
             <b-autocomplete
               :open-on-focus="true"
               :clear-on-select="true"
@@ -80,11 +88,11 @@
               expanded
               v-model="roleSearch"
               name="user-roles"
-              :data="userRoles"
+              :data="filteredUserRoles"
               :placeholder="`add role or search ${userRoles.length} existing roles`"
               icon-pack="fa"
               icon="user"
-              @select="role => updateUserRole(role)"
+              @select="role => addUserRole(role)"
             ></b-autocomplete>
           </div>
         </span>
@@ -132,15 +140,26 @@ export default {
         duration: 2500
       });
     },
-    updateUserRole(role) {
-      if (!role) {
-        return;
-      }
-      console.log("Pushing Up User Role: ", role);
+    removeUserRole(role) {
       let user = _.find(this.users, {
         name: this.userSelected
       });
-      let action = this.$store.dispatch("Deployer/updateUserRole", {
+      let action = this.$store.dispatch("Deployer/removeUserRole", {
+        key: user.key,
+        role: role
+      });
+      action.catch(error => {
+        this.flashMessage(error, true);
+      });
+    },
+    addUserRole(role) {
+      if (!role) {
+        return;
+      }
+      let user = _.find(this.users, {
+        name: this.userSelected
+      });
+      let action = this.$store.dispatch("Deployer/addUserRole", {
         key: user.key,
         role: role
       });
@@ -157,11 +176,13 @@ export default {
       let repo = _.find(this.repositories, {
         id: parseInt(repoId)
       });
-      let identity = ownerId(repo);
-      let installed = _.find(this.releases[identity], {
-        tag_name: tag
-      });
-      return installed.prerelease;
+      if (repo) {
+        let identity = ownerId(repo);
+        let installed = _.find(this.releases[identity], {
+          tag_name: tag
+        });
+        return installed.prerelease;
+      }
     },
     showComputerInstalls(user) {
       this.userSelected = null;
@@ -183,11 +204,13 @@ export default {
     filteredInstallsArray() {
       return _.map(this.installs, "user");
     },
-    findRepoFromKey(key) {
-      let repo = _.find(this.repositories, {
+    findMetadataFromkey(key) {
+      let repo = _.find(this.metadata, {
         id: parseInt(key)
       });
-      return repo.name;
+      if (repo) {
+        return repo.name;
+      }
     }
   },
   computed: {
@@ -205,8 +228,14 @@ export default {
         email: this.userEmail
       });
     },
+    filteredUserRoles() {
+      return _.difference(this.userRoles, this.userToChangeRole.role);
+    },
     userRoles() {
-      return _.uniq(_.map(this.users, "role"));
+      let userRoles = _.map(this.users, "role");
+      // return a single array of all unique user roles
+      return _.spread(_.union)(userRoles);
+      // return _.uniq(_.map(this.users, "role"));
     },
     userEmail() {
       let user = firebase.auth().currentUser;
@@ -258,4 +287,6 @@ export default {
     margin-top: -11px
   .notification
     padding: 8px
+  .user-role-tag
+    margin-top: -18px
 </style>
