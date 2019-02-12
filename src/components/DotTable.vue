@@ -502,7 +502,6 @@ export default {
                     title: `Validating Deployer Configuration...`,
                     value: 20
                   });
-                  console.log("Deployer Data: ", deployerData);
                   this.$store
                     .dispatch("Deployer/validate", deployerData)
                     .then(() => {
