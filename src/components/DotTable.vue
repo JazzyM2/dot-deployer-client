@@ -107,8 +107,8 @@
             <span>
               <label class="details label is-small">Add Users</label>
               <b-autocomplete
-                :keep-first="true"
                 :clear-on-select="true"
+                :keep-first="true"
                 size="is-small"
                 v-model="userSearch[repository.id]"
                 :data="filteredUsersArray(repository)"
@@ -685,8 +685,10 @@ export default {
   },
   computed: {
     userRoles() {
-      let flattenedUsers = flattenObject(this.users);
-      return _.uniq(_.map(flattenedUsers, "role"));
+      let userRoles = _.map(this.users, "role");
+      // return a single array of all unique user roles
+      return _.spread(_.union)(userRoles);
+      // return _.uniq(_.map(this.users, "role"));
     },
     userNames() {
       let flattenedUsers = flattenObject(this.users);
@@ -717,7 +719,7 @@ export default {
     isAdmin() {
       let user = _.find(this.users, { email: this.userEmail });
       if (user != null) {
-        return user.role == "admin";
+        return user.role.includes("admin");
       } else {
         return false;
       }

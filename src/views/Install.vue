@@ -99,7 +99,7 @@ export default {
         return null;
       }
     },
-    userRole() {
+    userRoles() {
       let user = _.find(this.users, { email: this.userEmail });
       if (user != null) {
         return user.role;
@@ -108,11 +108,10 @@ export default {
       }
     },
     isAdmin() {
-      let user = _.find(this.users, { email: this.userEmail });
-      if (user != null) {
-        return user.role == "admin";
+      if (this.userRoles) {
+        return this.userRoles.includes("admin");
       } else {
-        return false;
+        return null
       }
     },
     getAuthorizedRepositories() {
@@ -125,7 +124,7 @@ export default {
           let allowedUsers = metadata.users;
           if (Array.isArray(allowedUsers)) {
             if (
-              allowedUsers.includes(this.userRole) ||
+              _.intersection(allowedUsers, this.userRoles).length > 0 ||
               allowedUsers.includes(this.userName)
             ) {
               result.push(repository);

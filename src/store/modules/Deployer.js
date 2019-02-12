@@ -165,16 +165,39 @@ const actions = {
       })
     })
   },
-  updateUserRole: (context, payload) => {
+  addUserRole: (context, payload) => {
     return new Promise((resolve, reject) => {
-      let role = payload.role
+      let newRole = payload.role
       let key = payload.key
-      firebase.database().ref(`users/${key}/role`).set(role).then(() => {
-        resolve()
-      }).catch((error) => {
-        reject(error)
+      firebase.database().ref(`users/${key}/role`).once('value', snapshot => {
+        let currentRoles = snapshot.val()
+        if (!currentRoles) {
+          currentRoles = []
+        }
+        currentRoles.push(newRole)
+        firebase.database().ref(`users/${key}/role`).set(currentRoles).then(() => {
+          resolve()
+        }).catch((error) => {
+          reject(error)
+        })
       })
-
+    })
+  },
+  removeUserRole: (context, payload) => {
+    return new Promise((resolve, reject) => {
+      let newRole = payload.role
+      let key = payload.key
+      firebase.database().ref(`users/${key}/role`).once('value', snapshot => {
+        let currentRoles = snapshot.val()
+        _.remove(currentRoles, role => {
+          return role == newRole
+        })
+        firebase.database().ref(`users/${key}/role`).set(currentRoles).then(() => {
+          resolve()
+        }).catch((error) => {
+          reject(error)
+        })
+      })
     })
   },
   updateRepoName: (context, payload) => {
@@ -296,30 +319,6 @@ const actions = {
       })
     })
   }
-  // addAdmin: (context, email) => {
-  //   firebase.database().ref('admins').push({
-  //     email: email
-  //   })
-  // },
-  // deleteAdmin: (context, key) => {
-  //   firebase.database().ref('admins/' + key).remove()
-  // },
-  // addRepo: (context, repo) => {
-  //   return new Promise((resolve) => {
-  //     let payload = _.cloneDeep(repo)
-  //     payload.added_by = {}
-  //     payload.added_by.email = firebase.auth().currentUser.email
-  //     payload.added_by.photo = firebase.auth().currentUser.photoURL
-  //     firebase.database().ref('repositories').push(payload)
-  //     resolve()
-  //   })
-  // },
-  // deleteRepo: (context, key) => {
-  //   return new Promise((resolve) => {
-  //     firebase.database().ref('repositories/' + key).remove()
-  //     resolve()
-  //   })
-  // },
 }
 
 export default {
