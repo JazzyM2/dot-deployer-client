@@ -53,7 +53,7 @@
             :key="key"
           >
             <div class="tags has-addons is-left">
-              <span class="animated fadeIn tag is-dark">{{ findRepoFromKey(key) }}</span>
+              <span class="animated fadeIn tag is-dark">{{ findMetadataFromkey(key) }}</span>
               <span
                 :class="{'animated': true, 'fadeIn': true, 'tag': true, 'is-warning': isInstalledPreRelease(key, value.tag), 'is-primary': !isInstalledPreRelease(key, value.tag)}"
               >
@@ -204,8 +204,8 @@ export default {
     filteredInstallsArray() {
       return _.map(this.installs, "user");
     },
-    findRepoFromKey(key) {
-      let repo = _.find(this.repositories, {
+    findMetadataFromkey(key) {
+      let repo = _.find(this.metadata, {
         id: parseInt(key)
       });
       if (repo) {
