@@ -31,19 +31,19 @@
       </div>
       <div class="level-right">
         <button
-          @click="launchUrl(getUrl('documentation'))"
+          @click="launchUrl('https://weconnect.github.io/dot-deployer-client/')"
           v-if="help"
           onclick="this.blur();"
           class="animated fadeInRight button help menu-item-right is-small is-outlined is-dark"
         >Documentation</button>
         <button
-          @click="launchUrl(getUrl('feedback'))"
+          @click="launchUrl('https://airtable.com/shrSXlzhsxpelFmc1')"
           v-if="help"
           onclick="this.blur();"
           class="animated fadeInRight button help menu-item-right is-small is-outlined is-dark"
         >Feedback</button>
         <button
-          @click="launchUrl(getUrl('support'))"
+          @click="launchUrl('slack://channel?team=T03KB9Y6Y&id=CB5FX2PTP')"
           v-if="help"
           onclick="this.blur();"
           class="animated fadeInRight button help menu-item-right is-small is-outlined is-dark"
@@ -73,13 +73,6 @@ export default {
     };
   },
   methods: {
-    getUrl(type) {
-      try {
-        return this.deployers["WeConnect/dot-deployer-app"][type].url;
-      } catch (error) {
-        return null; // eslint-disable-line
-      }
-    },
     launchUrl(url) {
       if (url) {
         shell.openExternal(url);
