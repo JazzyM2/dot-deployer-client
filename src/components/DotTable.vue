@@ -17,7 +17,7 @@
             <p class="download-title">{{ getRepositoryName(repository) | chopString(30) }}</p>
           </td>
           <td @click="toggleRepoInsights(repository)" class="description">
-            <p class="download-description">{{ repository.description | chopString(47) }}</p>
+            <p class="download-description">{{ repository.description | chopString(40) }}</p>
           </td>
           <td class="version">
             <button
@@ -340,7 +340,8 @@ export default {
         let itemsProcessed = 0;
         _.forEach(dependsOn, tool => {
           itemsProcessed = itemsProcessed + 1;
-          if (!this.isInstalled(tool)) {
+          let foundTool = _.find(this.metadata, { name: tool.name });
+          if (!this.isInstalled(foundTool)) {
             reject(`Please install ${tool.name} first!`); // eslint-disable-line
           }
           if (itemsProcessed === dependsOn.length) {
