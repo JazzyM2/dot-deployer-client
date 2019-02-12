@@ -134,7 +134,7 @@ function createWindow() {
     width: 835,
     height: 400,
     maximizable: false,
-    closable: false,
+    // closable: false,
     autoHideMenuBar: true,
     webPreferences: {
       webSecurity: true
@@ -183,24 +183,6 @@ app.on('ready', async () => {
   }
   createWindow()
 })
-
-// autoUpdater.on("download-progress", progressObj => {
-//   let log_message = "Download speed: " + progressObj.bytesPerSecond;
-//   log_message =
-//     log_message + " - Downloaded " + progressObj.percent + "%";
-//   log_message =
-//     log_message +
-//     " (" +
-//     progressObj.transferred +
-//     "/" +
-//     progressObj.total +
-//     ")";
-//   this.$toast.open({
-//     message: log_message,
-//     position: "is-bottom",
-//     type: "is-info"
-//   });
-// });
 
 // Exit cleanly on request from parent process in development mode.
 if (isDevelopment) {
