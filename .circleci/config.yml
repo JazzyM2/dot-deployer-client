@@ -73,7 +73,7 @@ jobs:
             go get github.com/tcnksm/ghr
             echo 'export TAG=$(more ./dist_electron/version.txt)' >> $BASH_ENV
             source $BASH_ENV
-            ghr -n "All Tools Working" -b "Running Final Tests and Will Release to Users!" -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${TAG} ./dist_electron
+            ghr -n "Final Checks Before Release" -b "Just need to bang out a few more github issues" -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${TAG} ./dist_electron
 
 workflows:
   version: 2

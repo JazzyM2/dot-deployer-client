@@ -55,6 +55,10 @@ export default {
       ipcRenderer.once("update-not-available", () => {
         this.firebaseAuthListener();
       });
+      ipcRenderer.on("auto-updater-error", (event, payload) => {
+        this.flashMessage(payload.message, payload.type);
+        this.firebaseAuthListener();
+      });
     },
     firebaseAuthListener() {
       firebase.auth().onAuthStateChanged(user => {
@@ -157,35 +161,41 @@ export default {
       });
     },
     signIn() {
-      // this.$store.dispatch("Deployer/updateRollbarConfig", user);
-      let fetchGitHub = this.$store.dispatch(
-        "Deployer/fetchRepositoriesAndReleases"
-      );
       let users = this.$store.dispatch("Deployer/fireListener", {
         db: "users",
         store: "setUsers"
       });
-      let installs = this.$store.dispatch("Deployer/fireListener", {
-        db: "installs",
-        store: "setInstalls"
-      });
-      let metadata = this.$store.dispatch("Deployer/fireListener", {
-        db: "repositories",
-        store: "setMetadata"
-      });
-      // set listeners for github events that can take place via github application
-      this.$store.dispatch("Deployer/releaseListener");
-      this.$store.dispatch("Deployer/repositoryListener");
-      // wait for all promises to resolve and continue signin process
-      Promise.all([users, installs, metadata, fetchGitHub]).then(
-        () => this.handleSignInSuccess(),
-        error => this.handleSignInFailure(error)
-      );
+      users
+        .then(() => {
+          // this.$store.dispatch("Deployer/updateRollbarConfig", user);
+          let fetchGitHub = this.$store.dispatch(
+            "Deployer/fetchRepositoriesAndReleases"
+          );
+          let installs = this.$store.dispatch("Deployer/fireListener", {
+            db: "installs",
+            store: "setInstalls"
+          });
+          let metadata = this.$store.dispatch("Deployer/fireListener", {
+            db: "repositories",
+            store: "setMetadata"
+          });
+          // set listeners for github events that can take place via github application
+          this.$store.dispatch("Deployer/releaseListener");
+          this.$store.dispatch("Deployer/repositoryListener");
+          // wait for all promises to resolve and continue signin process
+          Promise.all([installs, metadata, fetchGitHub]).then(
+            () => this.handleSignInSuccess(),
+            error => this.handleSignInFailure(error)
+          );
+        })
+        .catch(error => {
+          this.handleSignInFailure(error);
+        });
     },
     handleSignInFailure(error) {
       firebase.auth().signOut();
       this.authenticating = false;
-      let message = error.message;
+      let message = error;
       this.flashMessage(message, "is-danger");
     },
     handleSignInSuccess() {
