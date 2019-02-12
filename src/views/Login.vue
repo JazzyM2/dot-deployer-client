@@ -55,6 +55,10 @@ export default {
       ipcRenderer.once("update-not-available", () => {
         this.firebaseAuthListener();
       });
+      ipcRenderer.on("auto-updater-error", (event, payload) => {
+        this.flashMessage(payload.message, payload.type);
+        this.firebaseAuthListener();
+      });
     },
     firebaseAuthListener() {
       firebase.auth().onAuthStateChanged(user => {

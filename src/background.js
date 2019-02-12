@@ -61,7 +61,7 @@ ipcMain.on('check-for-updates', (event) => {
 
   autoUpdater.on("error", error => {
     console.error(error)
-    event.sender.send('auto-updater-message', {
+    event.sender.send('auto-updater-error', {
       message: error.message,
       type: "is-danger"
     })
