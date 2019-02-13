@@ -1,5 +1,5 @@
 <template>
-  <div class="dropdown is-right is-active">
+  <div :class="{'dropdown': true, 'is-right': true, 'is-active': true, 'is-up': isup}">
     <div class="dropdown-trigger">
       <button
         onclick="this.blur()"
@@ -41,7 +41,7 @@ const _ = require("lodash");
 
 export default {
   name: "dropdown",
-  props: ["title", "repository", "tag", "update"],
+  props: ["title", "repository", "tag", "update", "isup"],
   data() {
     return {
       active: false
