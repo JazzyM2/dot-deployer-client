@@ -11,6 +11,7 @@
                 :expanded="true"
                 name="computers"
                 :clear-on-select="true"
+                :open-on-focus="true"
                 size="is-small"
                 v-model="computerSearch"
                 :data="filteredInstallsArray()"
@@ -25,6 +26,7 @@
               <b-autocomplete
                 class="autocomplete"
                 :clear-on-select="true"
+                :open-on-focus="true"
                 :expanded="true"
                 size="is-small"
                 v-model="userSearch"
@@ -96,6 +98,7 @@
               :clear-on-select="true"
               size="is-small"
               :expanded="true"
+              :open-on-focus="true"
               v-model="roleSearch"
               name="user-roles"
               :data="filteredUserRoles"
