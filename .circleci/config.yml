@@ -73,7 +73,7 @@ jobs:
             go get github.com/tcnksm/ghr
             echo 'export TAG=$(more ./dist_electron/version.txt)' >> $BASH_ENV
             source $BASH_ENV
-            ghr -n "Client For Release" -b "Test Old Client Overwrite!" -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${TAG} ./dist_electron
+            ghr -n "Changing Product Name To Match Old Client" -b "Testing Fix to Migration Error" -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${TAG} ./dist_electron
 
 workflows:
   version: 2
