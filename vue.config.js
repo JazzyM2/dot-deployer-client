@@ -9,7 +9,7 @@ module.exports = {
           owner: "WeConnect",
           repo: "dot-deployer-client"
         }],
-        productName: "Dot-Deployer 2.6.1",
+        productName: "Dot Deployer",
         nsis: {
           artifactName: "dot-deployer-setup.${ext}",
           uninstallDisplayName: "Dot Deployer"
