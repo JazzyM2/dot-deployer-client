@@ -29,6 +29,7 @@
             <dropdown
               class="dropdown"
               title="Install"
+              :isup="testIndex(index)"
               :update="isUpdateAvailable(repository, false)"
               :repository="repository"
               :tag="getInstalledTag(repository)"
@@ -108,7 +109,6 @@
               <label class="details label is-small">Add Users</label>
               <b-autocomplete
                 :clear-on-select="true"
-                :keep-first="true"
                 size="is-small"
                 v-model="userSearch[repository.id]"
                 :data="filteredUsersArray(repository)"
@@ -162,6 +162,15 @@ export default {
   },
   props: ["source"],
   methods: {
+    testIndex(index) {
+      let length = this.source.length;
+      let valueToTest = length - index;
+      if (valueToTest <= 1) {
+        return true;
+      } else {
+        return false;
+      }
+    },
     getReleasesCount(repository) {
       let identity = ownerId(repository);
       let releases = this.releases[identity];

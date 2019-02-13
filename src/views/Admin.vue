@@ -8,10 +8,8 @@
               <label class="label is-small">Computers</label>
               <b-autocomplete
                 class="autocomplete"
-                expanded
+                :expanded="true"
                 name="computers"
-                :open-on-focus="true"
-                :keep-first="true"
                 :clear-on-select="true"
                 size="is-small"
                 v-model="computerSearch"
@@ -26,11 +24,9 @@
               <label class="label is-small">Users</label>
               <b-autocomplete
                 class="autocomplete"
-                :open-on-focus="true"
-                :keep-first="true"
                 :clear-on-select="true"
+                :expanded="true"
                 size="is-small"
-                expanded
                 v-model="userSearch"
                 name="user-roles"
                 :data="filteredUsersArray()"
@@ -38,6 +34,21 @@
                 icon-pack="fa"
                 icon="user"
                 @select="user => toggleUserPermissions(user)"
+              ></b-autocomplete>
+            </span>
+            <span>
+              <label class="label is-small">Roles</label>
+              <b-autocomplete
+                class="autocomplete"
+                :clear-on-select="true"
+                :open-on-focus="true"
+                :expanded="true"
+                size="is-small"
+                name="user-roles"
+                :data="userRoles"
+                :placeholder="`search ${userRoles.length} roles...`"
+                icon-pack="fa"
+                icon="user"
               ></b-autocomplete>
             </span>
           </div>
@@ -82,10 +93,9 @@
           >{{ role }}</b-tag>
           <div @keyup.enter="addUserRole(roleSearch)">
             <b-autocomplete
-              :open-on-focus="true"
               :clear-on-select="true"
               size="is-small"
-              expanded
+              :expanded="true"
               v-model="roleSearch"
               name="user-roles"
               :data="filteredUserRoles"
