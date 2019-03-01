@@ -19,8 +19,7 @@ new Vue({
 }).$mount('#app')
 
 import Buefy from 'buefy'
-import 'buefy/dist/buefy.css'
-
+import './styles/main.scss'
 Vue.use(Buefy)
 
 // authorization checker, redirects to login screen if user signs out

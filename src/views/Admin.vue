@@ -9,6 +9,7 @@
               <b-autocomplete
                 class="autocomplete"
                 :expanded="true"
+                :keep-first="true"
                 name="computers"
                 :clear-on-select="true"
                 :open-on-focus="true"
@@ -25,6 +26,7 @@
               <label class="label is-small">Users</label>
               <b-autocomplete
                 class="autocomplete"
+                :keep-first="true"
                 :clear-on-select="true"
                 :open-on-focus="true"
                 :expanded="true"
@@ -44,6 +46,7 @@
                 class="autocomplete"
                 :clear-on-select="true"
                 :open-on-focus="true"
+                :keep-first="true"
                 :expanded="true"
                 size="is-small"
                 name="user-roles"
@@ -212,10 +215,32 @@ export default {
       }
     },
     filteredUsersArray() {
-      return _.map(this.users, "name");
+      let result = _.cloneDeep(_.map(this.users, "name"));
+      if (this.userSearch) {
+        result = result.filter(option => {
+          return (
+            option
+              .toString()
+              .toLowerCase()
+              .indexOf(this.userSearch.toLowerCase()) >= 0
+          );
+        });
+      }
+      return result;
     },
     filteredInstallsArray() {
-      return _.map(this.installs, "user");
+      let result = _.cloneDeep(_.map(this.installs, "user"));
+      if (this.computerSearch) {
+        result = result.filter(option => {
+          return (
+            option
+              .toString()
+              .toLowerCase()
+              .indexOf(this.computerSearch.toLowerCase()) >= 0
+          );
+        });
+      }
+      return result;
     },
     findMetadataFromkey(key) {
       let repo = _.find(this.metadata, {
@@ -242,7 +267,18 @@ export default {
       });
     },
     filteredUserRoles() {
-      return _.difference(this.userRoles, this.userToChangeRole.role);
+      let result = _.difference(this.userRoles, this.userToChangeRole.role);
+      if (this.roleSearch) {
+        result = result.filter(option => {
+          return (
+            option
+              .toString()
+              .toLowerCase()
+              .indexOf(this.roleSearch.toLowerCase()) >= 0
+          );
+        });
+      }
+      return result;
     },
     userRoles() {
       let userRoles = _.map(this.users, "role");
