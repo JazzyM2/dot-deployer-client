@@ -108,7 +108,9 @@
             <span>
               <label class="details label is-small">Add Users</label>
               <b-autocomplete
+                class="is-info"
                 :clear-on-select="true"
+                :keep-first="true"
                 size="is-small"
                 v-model="userSearch[repository.id]"
                 :data="filteredUsersArray(repository)"
@@ -375,6 +377,7 @@ export default {
         if (!uninstall) {
           resolve();
         } else {
+          // let promises = []
           _.forEach(uninstall, operation => {
             if (operation.action === "run") {
               createActualPath(`${parentPath}\\${operation.source}`).then(
@@ -430,8 +433,8 @@ export default {
               });
           });
         } else if (operation.action === "run") {
-          shell.openItem(tempFilePath);
-          resolve();
+          resolve(shell.openItem(tempFilePath));
+          // resolve();
         }
       });
     },
@@ -670,9 +673,12 @@ export default {
       this.flashMessage(error, true);
     },
     filteredUsersArray(repository) {
-      let result = [];
+      // collect user roles and names
+      let result = _.cloneDeep(this.userRoles);
+      result = result.concat(this.userNames);
+      // if search terms exist...
       if (this.userSearch[repository.id]) {
-        result = this.userNames.filter(option => {
+        result = result.filter(option => {
           return (
             option
               .toString()
@@ -680,10 +686,8 @@ export default {
               .indexOf(this.userSearch[repository.id].toLowerCase()) >= 0
           );
         });
-      } else {
-        result = this.userNames;
       }
-      result = result.concat(this.userRoles);
+      // remove search results that are already assigned to the repo
       let metadata = this.matchMetadataWithGithubRepository(repository);
       if (metadata && metadata.users)
         _.remove(result, r => {
